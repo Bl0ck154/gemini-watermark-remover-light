@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.5
+
+- Added half-scale 1K preview support with a calibrated 24×24 alpha map, 48 px margins, and 0.55 gain.
+- Added current 1K 48×48 / 32 px-margin detection alongside legacy profiles.
+- Removed the blanket preview-size skip that left small watermarks untouched.
+
 ## 0.2.4
 
 - Restored the legacy gist `@namespace` so Tampermonkey updates the existing script instead of installing a duplicate.
