@@ -2,11 +2,11 @@
 
 A small, download-focused userscript for removing the visible Gemini sparkle watermark from generated images. It keeps the proven `0.1.13` interception flow without loading the full upstream UI/runtime.
 
-## Why version 0.2.3?
+## Why version 0.2.4?
 
 Versions `0.2.0`–`0.2.2` were compatibility bridges that loaded the live upstream userscript through `@require`. That made Light inherit upstream regressions and removed its main advantage.
 
-`0.2.3` restores the Light `0.1.13` runtime, but keeps a version greater than `0.2.2` so userscript managers can update normally. It also:
+`0.2.4` restores the Light `0.1.13` runtime, but keeps a version greater than `0.2.2` so userscript managers can update normally. It preserves the original gist `@namespace` for in-place updates while moving `@updateURL` to this repository. It also:
 
 - embeds the calibrated alpha maps instead of fetching a mutable gist;
 - supports the current light 48×48 watermark at 96 px right/bottom margins;
@@ -25,7 +25,7 @@ Supported pages:
 
 ## Verified regression
 
-The `0.2.3` profile was verified locally against a 2420×1728 Gemini JPG where the old 96×96 profile produced a dark artifact. The selected profile was:
+The current profile was verified locally against a 2420×1728 Gemini JPG where the old 96×96 profile produced a dark artifact. The selected profile was:
 
 ```text
 watermark box: x=2276..2323, y=1584..1631
@@ -45,7 +45,7 @@ npm test
 
 ## Українською
 
-Це повернення легкого рушія `0.1.13`, а не повного upstream-комбайна. Номер `0.2.3` потрібен, щоб Tampermonkey оновив зламану `0.2.2` автоматично. Alpha-маски вбудовані в userscript, тому зміни або видалення стороннього gist більше не ламають обробку.
+Це повернення легкого рушія `0.1.13`, а не повного upstream-комбайна. Номер `0.2.4` потрібен, щоб Tampermonkey оновив зламану `0.2.2` автоматично. Старий gist `@namespace` навмисно збережений, тому оновлення відбувається на місці, а `@updateURL` уже веде в репозиторій. Alpha-маски вбудовані в userscript.
 
 ## Credits
 

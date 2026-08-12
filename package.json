@@ -1,6 +1,6 @@
 {
   "name": "gemini-watermark-remover-light",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "private": true,
   "description": "Lightweight download-focused userscript for removing visible Gemini image watermarks.",
   "type": "module",

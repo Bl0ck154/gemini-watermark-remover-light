@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.4
+
+- Restored the legacy gist `@namespace` so Tampermonkey updates the existing script instead of installing a duplicate.
+- Kept `@updateURL` and `@downloadURL` on the new repository raw URL.
+
 ## 0.2.3
 
 - Restored the lightweight `0.1.13` download-focused runtime.

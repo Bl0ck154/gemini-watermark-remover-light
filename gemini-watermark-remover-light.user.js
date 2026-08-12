@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gemini NanoBanana Watermark Remover Light
-// @namespace    https://github.com/Bl0ck154/gemini-watermark-remover-light
-// @version      0.2.3
+// @namespace    https://gist.github.com/Bl0ck154
+// @version      0.2.4
 // @description  Lightweight download-focused remover: restored 0.1.13 runtime with standalone maps and current 2K watermark support
 // @icon         https://www.google.com/s2/favicons?domain=gemini.google.com
 // @author       Bl0ck154

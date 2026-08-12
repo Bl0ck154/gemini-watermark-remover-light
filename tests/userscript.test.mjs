@@ -38,8 +38,10 @@ function removeWatermark(rgb, width, height, alphaBytes, config) {
   return result;
 }
 
-test('release is updateable over the broken 0.2.2 bridge', () => {
-  assert.equal(readVersion(), '0.2.3');
+test('release preserves the legacy identity and updates over the broken 0.2.2 bridge', () => {
+  assert.equal(readVersion(), '0.2.4');
+  assert.match(source, /^\/\/ @namespace\s+https:\/\/gist\.github\.com\/Bl0ck154$/m);
+  assert.match(source, /^\/\/ @updateURL\s+https:\/\/raw\.githubusercontent\.com\/Bl0ck154\/gemini-watermark-remover-light\/main\/gemini-watermark-remover-light\.user\.js$/m);
   assert.doesNotMatch(source, /@require|GM_xmlhttpRequest|MAP_SOURCE_URL/);
 });
 
