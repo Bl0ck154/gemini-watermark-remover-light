@@ -1,0 +1,12 @@
+{
+  "name": "gemini-watermark-remover-light",
+  "version": "0.2.3",
+  "private": true,
+  "description": "Lightweight download-focused userscript for removing visible Gemini image watermarks.",
+  "type": "module",
+  "scripts": {
+    "check": "node --check gemini-watermark-remover-light.user.js",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "license": "MIT"
+}
