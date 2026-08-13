@@ -43,6 +43,16 @@ test('project site leads with the uploader and includes complete discovery metad
   assert.match(index, /rel="icon" href="\.\/favicon\.svg"/);
 });
 
+test('download format choices use three distinct encoders', () => {
+  assert.match(index, /name="output-format" value="image\/jpeg"/);
+  assert.match(index, /name="output-format" value="image\/png"/);
+  assert.match(index, /name="output-format" value="image\/webp"/);
+  assert.doesNotMatch(index, /name="output-format" value="original"/);
+  assert.match(index, /Smaller JPEG/);
+  assert.match(index, /Lossless PNG/);
+  assert.match(index, /High-quality WebP/);
+});
+
 test('every DOM id queried by the web app exists in the page', () => {
   const queriedIds = [...app.matchAll(/querySelector\('#([^']+)'\)/g)].map((match) => match[1]);
   assert.ok(queriedIds.length > 10, 'expected the web app to query its controls');
