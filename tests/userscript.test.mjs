@@ -39,13 +39,14 @@ function removeWatermark(rgb, width, height, alphaBytes, config) {
 }
 
 test('release preserves the legacy identity and updates over the broken 0.2.2 bridge', () => {
-  assert.equal(readVersion(), '0.2.5');
+  assert.equal(readVersion(), '0.3.0');
   assert.match(source, /^\/\/ @namespace\s+https:\/\/gist\.github\.com\/Bl0ck154$/m);
   assert.match(source, /^\/\/ @updateURL\s+https:\/\/raw\.githubusercontent\.com\/Bl0ck154\/gemini-watermark-remover-light\/main\/gemini-watermark-remover-light\.user\.js$/m);
   assert.doesNotMatch(source, /@require|GM_xmlhttpRequest|MAP_SOURCE_URL/);
 });
 
 test('all calibrated maps are embedded at the expected dimensions', () => {
+  assert.equal(readMap('36-v2').length, 36 * 36);
   assert.equal(readMap('24-preview').length, 24 * 24);
   assert.equal(readMap('48').length, 48 * 48);
   assert.equal(readMap('96').length, 96 * 96);
@@ -119,4 +120,30 @@ test('current 48px/96px-margin profile reverses a synthetic light watermark', ()
     maxError = Math.max(maxError, Math.abs(restored[index] - original[index]));
   }
   assert.ok(maxError <= 2, `maximum round-trip error was ${maxError}`);
+});
+
+
+test('v2 36px profile reverses a synthetic watermark', () => {
+  const width = 1408;
+  const height = 768;
+  const config = { size: 36, marginRight: 95, marginBottom: 95, alphaGain: 1 };
+  const alpha = readMap('36-v2');
+  const original = new Uint8ClampedArray(width * height * 3);
+  for (let i = 0; i < original.length; i += 1) original[i] = 40 + (i % 140);
+  const watermarked = new Uint8ClampedArray(original);
+  const originX = width - config.marginRight - config.size;
+  const originY = height - config.marginBottom - config.size;
+  for (let row = 0; row < config.size; row += 1) {
+    for (let col = 0; col < config.size; col += 1) {
+      const effectiveAlpha = alpha[row * config.size + col] / 255;
+      const offset = ((originY + row) * width + originX + col) * 3;
+      for (let channel = 0; channel < 3; channel += 1) watermarked[offset + channel] = Math.round(effectiveAlpha * 255 + (1 - effectiveAlpha) * original[offset + channel]);
+    }
+  }
+  const restored = removeWatermark(watermarked, width, height, alpha, config);
+  let maxError = 0;
+  for (let i = 0; i < restored.length; i += 1) maxError = Math.max(maxError, Math.abs(restored[i] - original[i]));
+  assert.ok(maxError <= 3, `maximum v2 round-trip error was ${maxError}`);
+  assert.match(source, /mapKey:\s*["']36-v2["']/);
+  assert.match(source, /MIN_MULTI_SCORE_GAP/);
 });

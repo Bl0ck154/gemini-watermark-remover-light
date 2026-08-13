@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added the compact current `36-v2` watermark profile, quantized from the upstream calibrated alpha map.
+- Added projected v2 margin candidates and included the 36 px profile in bottom-right fallback scanning.
+- Added official 1K-size priors and an ambiguity gate between the two best candidates to reduce wrong-region edits.
+- Added regression coverage for the new 36 px profile and CI checks for userscript/web map synchronization.
+
 - Turned the GitHub Pages project site into a functional local drag-and-drop image tool.
 - Added confidence-gated profile matching, before/after comparison, and PNG, JPG, or WebP downloads.
 - Added upload size and decoded-pixel limits, stale-job protection, and accessible processing states.

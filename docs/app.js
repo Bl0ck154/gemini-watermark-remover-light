@@ -4,6 +4,7 @@ const ALPHA_NOISE_FLOOR = 3 / 255;
 const ALPHA_THRESHOLD = 2e-3;
 const MAX_ALPHA = 0.99;
 const MIN_MULTI_CANDIDATE_SCORE = 0.002;
+const MIN_MULTI_SCORE_GAP = 0.0005;
 const MIN_SCAN_EDGE = 1536;
 const SCAN_MARGIN_MIN = 32;
 const SCAN_MARGIN_MAX = 384;
@@ -14,6 +15,11 @@ const MAX_FILE_SIZE = 80 * 1024 * 1024;
 const MAX_PIXELS = 40_000_000;
 const MAX_DIMENSION = 16_384;
 const HALF_K_SIZE_KEYS = new Set(['512x512', '768x512', '512x768']);
+const ONE_K_SIZE_KEYS = new Set([
+  '1024x1024', '512x2048', '384x3072', '848x1264', '1264x848', '896x1200', '2048x512',
+  '1200x896', '928x1152', '1152x928', '3072x384', '768x1376', '1376x768', '1408x768',
+  '1584x672', '832x1248', '1248x832', '864x1184', '1184x864', '768x1344', '1344x768', '1536x672'
+]);
 const mapPromises = new Map();
 
 const elements = {
@@ -79,27 +85,48 @@ function getAlphaMap(key) {
   return mapPromises.get(key);
 }
 
+function getV2SmallConfig(width, height) {
+  const longSide = Math.max(width, height);
+  const shortSide = Math.min(width, height);
+  if (longSide > 2048 || shortSide <= 0) return null;
+  const sourceLongDim = shortSide >= 566 ? 2752 : (shortSide >= 550 ? 2816 : 2848);
+  const margin = Math.round(192 * (longSide / sourceLongDim));
+  const config = { size: 36, marginRight: margin, marginBottom: margin, mapKey: '36-v2' };
+  return width - margin - config.size >= 0 && height - margin - config.size >= 0 ? config : null;
+}
+
+function appendUniqueCandidate(candidates, candidate) {
+  if (!candidate) return candidates;
+  const duplicate = candidates.some((item) => item.size === candidate.size && item.marginRight === candidate.marginRight && item.marginBottom === candidate.marginBottom && item.mapKey === candidate.mapKey);
+  if (!duplicate) candidates.push(candidate);
+  return candidates;
+}
+
 function getCandidateConfigs(width, height) {
-  if (HALF_K_SIZE_KEYS.has(`${width}x${height}`)) {
-    return [{ size: 48, marginRight: 32, marginBottom: 32, mapKey: '48' }];
+  const key = `${width}x${height}`;
+  const v2Small = getV2SmallConfig(width, height);
+  if (HALF_K_SIZE_KEYS.has(key)) return appendUniqueCandidate([{ size: 48, marginRight: 32, marginBottom: 32, mapKey: '48', prior: 0.00025 }], v2Small);
+  if (ONE_K_SIZE_KEYS.has(key)) {
+    return appendUniqueCandidate([
+      { size: 48, marginRight: 32, marginBottom: 32, mapKey: '48', prior: 0.00035 },
+      { size: 48, marginRight: 96, marginBottom: 96, mapKey: '48', alphaGain: 0.55, prior: 0.00015 },
+      { size: 96, marginRight: 64, marginBottom: 64, mapKey: '96' },
+      { size: 24, marginRight: 48, marginBottom: 48, mapKey: '24-preview', alphaGain: 0.55 }
+    ], v2Small);
   }
   if (Math.max(width, height) >= 1024) {
     const candidates = [
       { size: 96, marginRight: 64, marginBottom: 64, mapKey: '96' },
       { size: 48, marginRight: 96, marginBottom: 96, mapKey: '48', alphaGain: 0.55 }
     ];
-    if (Math.max(width, height) <= 1800) {
-      candidates.push(
-        { size: 48, marginRight: 32, marginBottom: 32, mapKey: '48' },
-        { size: 24, marginRight: 48, marginBottom: 48, mapKey: '24-preview', alphaGain: 0.55 }
-      );
-    }
-    if (width >= 288 && height >= 288) {
-      candidates.push({ size: 96, marginRight: 192, marginBottom: 192, mapKey: '96-20260520' });
-    }
-    return candidates;
+    if (Math.max(width, height) <= 1800) candidates.push(
+      { size: 48, marginRight: 32, marginBottom: 32, mapKey: '48' },
+      { size: 24, marginRight: 48, marginBottom: 48, mapKey: '24-preview', alphaGain: 0.55 }
+    );
+    if (width >= 288 && height >= 288) candidates.push({ size: 96, marginRight: 192, marginBottom: 192, mapKey: '96-20260520' });
+    return appendUniqueCandidate(candidates, v2Small);
   }
-  return [{ size: 48, marginRight: 32, marginBottom: 32, mapKey: '48' }];
+  return appendUniqueCandidate([{ size: 48, marginRight: 32, marginBottom: 32, mapKey: '48' }], v2Small);
 }
 
 function scoreConfig(imageData, alphaMap, config) {
@@ -135,6 +162,7 @@ async function scanBottomRightConfig(imageData) {
   let secondBestScore = Number.NEGATIVE_INFINITY;
   const profiles = [
     { mapKey: '24-preview', size: 24, alphaGain: 0.55 },
+    { mapKey: '36-v2', size: 36 },
     { mapKey: '48', size: 48, alphaGain: 0.55 },
     { mapKey: '96', size: 96 },
     { mapKey: '96-20260520', size: 96 }
@@ -163,14 +191,20 @@ async function selectConfig(imageData) {
   const candidates = getCandidateConfigs(imageData.width, imageData.height);
   let best = candidates[0];
   let bestScore = Number.NEGATIVE_INFINITY;
+  let secondBestScore = Number.NEGATIVE_INFINITY;
   for (const candidate of candidates) {
-    const score = scoreConfig(imageData, await getAlphaMap(candidate.mapKey), candidate);
+    const score = scoreConfig(imageData, await getAlphaMap(candidate.mapKey), candidate) + (candidate.prior || 0);
     if (score > bestScore) {
+      secondBestScore = bestScore;
       best = candidate;
       bestScore = score;
+    } else if (score > secondBestScore) {
+      secondBestScore = score;
     }
   }
-  return bestScore < MIN_MULTI_CANDIDATE_SCORE ? scanBottomRightConfig(imageData) : best;
+  if (bestScore < MIN_MULTI_CANDIDATE_SCORE) return scanBottomRightConfig(imageData);
+  if (Number.isFinite(secondBestScore) && bestScore - secondBestScore < MIN_MULTI_SCORE_GAP) return scanBottomRightConfig(imageData);
+  return best;
 }
 
 function removeWatermark(imageData, alphaMap, config) {
