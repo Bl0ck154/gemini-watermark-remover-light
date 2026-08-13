@@ -16,7 +16,7 @@
 - Added upload size and decoded-pixel limits, stale-job protection, and accessible processing states.
 - Added generated calibration-map synchronization between the userscript and web tool.
 - Moved the image drop field to the first screen and made the full field clickable.
-- Replaced the download dropdown with explained JPEG, PNG, and original-format choices.
+- Replaced the download dropdown with explained JPEG, PNG, and WebP choices.
 - Added complete product naming, structured SEO metadata, a sitemap, and a site icon.
 
 ## 0.2.5
