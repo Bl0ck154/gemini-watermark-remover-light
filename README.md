@@ -1,113 +1,71 @@
 # ✦ Gemini Watermark Remover Light
 
-A **small, local-first userscript** for supported Gemini image downloads. Light keeps the proven standalone runtime, ships its calibrated image data inside the script, and avoids loading a mutable upstream runtime through `@require`.
+Remove the **visible Gemini / Nano Banana watermark** directly in your browser.
 
-[**Open web tool**](https://bl0ck154.github.io/gemini-watermark-remover-light/) · [**Install userscript**](https://raw.githubusercontent.com/Bl0ck154/gemini-watermark-remover-light/main/gemini-watermark-remover-light.user.js) · [Changelog](./CHANGELOG.md) · [MIT License](./LICENSE)
+No uploads. No backend. No account. Just open an image, remove the visible mark, and download the result.
+
+[**🌐 Open Web Tool**](https://bl0ck154.github.io/gemini-watermark-remover-light/) · [**🧩 Install Userscript**](https://raw.githubusercontent.com/Bl0ck154/gemini-watermark-remover-light/main/gemini-watermark-remover-light.user.js)
 
 ![JavaScript](https://img.shields.io/badge/JavaScript-browser--native-F7DF1E?logo=javascript&logoColor=111)
-![Runtime](https://img.shields.io/badge/runtime-standalone-55e99a)
+![Local processing](https://img.shields.io/badge/processing-100%25%20local-55e99a)
 ![Backend](https://img.shields.io/badge/backend-none-7aa7ff)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-## Why Light?
+## Two ways to use it
 
-Versions `0.2.0`–`0.2.2` temporarily acted as compatibility bridges and loaded the live upstream userscript through `@require`. That made Light inherit upstream regressions and removed the main reason for keeping a lightweight fork.
+### 🌐 Web tool
 
-`0.2.5` returns to the proven standalone Light runtime while keeping normal userscript updates working. It:
+For one-off images, use the browser tool:
 
-- embeds calibrated alpha maps instead of fetching mutable runtime data;
-- supports current light profiles and half-scale previews;
-- retains legacy 96×96 profiles and bounded fallback scanning;
-- keeps the legacy gist `@namespace` so existing installs update in place;
-- points `@updateURL` and `@downloadURL` at this repository;
-- processes supported image downloads locally in the browser;
-- has no runtime dependencies or build step.
+1. Drop or choose a Gemini image.
+2. The visible watermark is processed locally in your browser.
+3. Compare the before/after result.
+4. Download the cleaned image as PNG, JPG, or WebP.
 
-## Install
+**Your image never leaves your device.** The site has no image-processing server or upload endpoint.
+
+[**Open the web tool →**](https://bl0ck154.github.io/gemini-watermark-remover-light/#workbench)
+
+### 🧩 Userscript
+
+If you download Gemini images regularly, install the userscript once and keep using Gemini normally.
 
 1. Install [Tampermonkey](https://www.tampermonkey.net/) or another compatible userscript manager.
 2. Open the [raw userscript](https://raw.githubusercontent.com/Bl0ck154/gemini-watermark-remover-light/main/gemini-watermark-remover-light.user.js).
-3. Confirm installation.
-4. Use Gemini normally; supported image download flows are handled by the script.
+3. Confirm the installation.
+4. Download supported Gemini images as usual.
 
-Supported pages:
+The userscript works on:
 
-- `https://gemini.google.com/*`
-- `https://business.gemini.google/*`
+- `gemini.google.com`
+- `business.gemini.google`
 
-## Web tool
+## Why Light?
 
-Prefer a one-off workflow? The project site includes a functional drag-and-drop tool with before/after comparison and PNG, JPG, or WebP download. Image decoding, profile matching, alpha reversal, and encoding all happen in the current browser tab; the site has no upload endpoint or processing backend.
+- **Private by design** — image processing happens locally.
+- **No AI guessing** — it uses a deterministic removal method for supported visible Gemini marks.
+- **Lightweight** — no external runtime or processing backend.
+- **Web + userscript** — use the quick browser tool or automate downloads.
+- **Open source** — the project is published under the MIT License.
 
-[**Process an image in the browser →**](https://bl0ck154.github.io/gemini-watermark-remover-light/#workbench)
+## What it removes
 
-The public upload flow is deliberately stricter than the userscript: it requires a confident calibrated match and stops instead of modifying an arbitrary image. Input is limited to JPG, PNG, or WebP, 80 MB compressed, 40 megapixels, and 16,384 pixels per side.
+This project targets the **visible Gemini sparkle watermark** found on supported generated images.
 
-## Current profile coverage
-
-| Profile | Placement | Notes |
-|---|---:|---|
-| 24×24 preview | 48 px right / bottom | half-scale preview, gain `0.55` |
-| 48×48 light | 96 px right / bottom | current large-download profile, gain `0.55` |
-| 48×48 light | 32 px right / bottom | smaller/current layout |
-| 96×96 legacy | 64 px right / bottom | legacy profile |
-| 96×96 2026 | 192 px right / bottom | later legacy-size placement |
-| fallback scan | bounded bottom-right area | requires a confidence threshold and score gap |
-
-## Verified regression
-
-The current profile was verified locally against a `2420×1728` Gemini JPG where the old 96×96 profile produced a dark artifact:
-
-```text
-watermark box: x=2276..2323, y=1584..1631
-size:          48×48
-margins:       right=96, bottom=96
-alpha gain:    0.55
-```
-
-## Design goals
-
-**Small surface area.** The project stays download-focused instead of pulling in a larger UI/runtime.
-
-**Local processing.** There is no project backend for image processing.
-
-**Predictable updates.** Light changes only when this repository publishes a new version; it no longer inherits a live upstream script automatically.
-
-**Fail-safe fallback.** When fixed candidates are insufficient, the fallback scan uses explicit confidence requirements instead of accepting any best-looking location.
+It does **not** claim to remove SynthID or other invisible provenance signals.
 
 ## Development
-
-No runtime dependencies or build step are required.
 
 ```bash
 npm run check
 npm test
 ```
 
-Run `npm run sync:docs-maps` after changing embedded calibration data. `npm run check` fails when the generated web copy is out of sync.
-
-The regression suite verifies the userscript identity/update path, embedded calibration dimensions, synthetic round-trip behavior, web-map parity, and safety guards for public uploads.
-
-## Project layout
-
-```text
-gemini-watermark-remover-light.user.js  # standalone userscript
-README.md                                # project documentation
-CHANGELOG.md                             # release history
-tests/userscript.test.mjs               # regression tests
-docs/                                    # functional GitHub Pages image tool
-scripts/sync-docs-maps.mjs               # keeps web calibration data in sync
-```
-
-The project page is kept in [`docs/`](./docs/) and can be published directly with GitHub Pages from the `main` branch. It is a static site: there is no build step, external runtime, or backend.
-
-## Scope
-
-This project is focused on the **visible Gemini image mark** documented by the upstream reverse-alpha approach. It does not claim to handle SynthID or other invisible provenance mechanisms.
+Release notes and technical changes are kept in the [changelog](./CHANGELOG.md).
 
 ## Credits
 
-Based on the reverse-alpha approach from [GargantuaX/gemini-watermark-remover](https://github.com/GargantuaX/gemini-watermark-remover) and the original calibration work credited by that project.
+Based on the reverse-alpha approach from [GargantuaX/gemini-watermark-remover](https://github.com/GargantuaX/gemini-watermark-remover) and the calibration work credited by that project.
 
 This is an independent open-source project and is not affiliated with Google. Gemini and related names are trademarks of their respective owners.
 
