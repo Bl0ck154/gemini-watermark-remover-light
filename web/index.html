@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b1020">
+  <meta name="description" content="Remove the visible Gemini / Nano Banana sparkle watermark locally in your browser. No uploads, no account, open source.">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="https://bl0ck154.github.io/gemini-watermark-remover-light/">
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Gemini Watermark Remover Light">
+  <meta property="og:description" content="Fast, deterministic removal of the visible Gemini sparkle. 100% local in your browser.">
+  <meta property="og:url" content="https://bl0ck154.github.io/gemini-watermark-remover-light/">
+  <meta name="twitter:card" content="summary">
+  <title>Gemini Watermark Remover Light — Local & Open Source</title>
+</head>
+<body>
+  <div class="page-glow glow-a" aria-hidden="true"></div>
+  <div class="page-glow glow-b" aria-hidden="true"></div>
+
+  <header class="topbar shell">
+    <a class="brand" href="#top" aria-label="Gemini Watermark Remover Light home">
+      <span class="brand-mark" aria-hidden="true">✦</span>
+      <span>Gemini Remover <strong>Light</strong></span>
+    </a>
+    <nav class="nav-actions" aria-label="Project links">
+      <a class="text-link" href="https://github.com/Bl0ck154/gemini-watermark-remover-light" target="_blank" rel="noreferrer">GitHub</a>
+      <a class="button button-small button-ghost" href="https://raw.githubusercontent.com/Bl0ck154/gemini-watermark-remover-light/main/gemini-watermark-remover-light.user.js">Install userscript</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero shell">
+      <div class="eyebrow"><span class="pulse-dot"></span> Runs entirely on your device</div>
+      <h1>Remove the visible Gemini watermark.<br><span>No upload required.</span></h1>
+      <p class="hero-copy">Drop a Gemini or Nano Banana image below. The calibrated reverse-alpha engine detects the known sparkle profile, reconstructs the covered pixels, and gives you the cleaned image immediately.</p>
+      <div class="trust-row" aria-label="Key benefits">
+        <span>🔒 100% local</span><span>⚡ Instant</span><span>🧩 Open source</span><span>💸 Free</span>
+      </div>
+    </section>
+
+    <section class="tool-section shell" aria-labelledby="tool-title">
+      <div class="tool-card">
+        <div class="tool-header">
+          <div><p class="section-kicker">ONLINE TOOL</p><h2 id="tool-title">Clean an image</h2></div>
+          <label class="format-control"><span>Output</span><select id="output-format" aria-label="Output image format"><option value="auto">Same as source</option><option value="jpeg">JPEG · 92%</option><option value="png">PNG · lossless</option></select></label>
+        </div>
+
+        <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-describedby="drop-help">
+          <input id="file-input" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+          <div class="upload-icon" aria-hidden="true">↑</div>
+          <strong>Drop your Gemini image here</strong>
+          <span id="drop-help">or click to browse · you can also paste with Ctrl+V</span>
+          <small>PNG, JPG/JPEG or WebP · processed only in this tab</small>
+        </div>
+
+        <div id="processing" class="processing" hidden aria-live="polite"><span class="spinner" aria-hidden="true"></span><div><strong>Removing visible watermark…</strong><span>Detecting the calibrated Gemini profile locally.</span></div></div>
+        <div id="error-box" class="notice notice-error" hidden role="alert"></div>
+
+        <div id="result" class="result" hidden>
+          <div class="compare" id="compare">
+            <img id="before-image" alt="Original image preview">
+            <div class="after-layer"><img id="after-image" alt="Cleaned image preview"></div>
+            <div class="compare-line" aria-hidden="true"><span>↔</span></div>
+            <span class="image-badge badge-before">Before</span><span class="image-badge badge-after">After</span>
+            <input id="compare-range" class="compare-range" type="range" min="0" max="100" value="50" aria-label="Compare original and cleaned image">
+          </div>
+          <div class="result-info">
+            <div class="result-copy"><span class="success-mark" aria-hidden="true">✓</span><div><strong>Watermark removed</strong><span id="result-meta"></span></div></div>
+            <div class="result-actions"><button id="another-button" class="button button-ghost" type="button">Another image</button><a id="download-button" class="button button-primary" download>Download clean image</a></div>
+          </div>
+        </div>
+      </div>
+      <p class="privacy-note">🔐 Your image never leaves the browser. There is no upload endpoint and no image storage.</p>
+    </section>
+
+    <section class="content-section shell">
+      <div class="section-heading"><p class="section-kicker">HOW IT WORKS</p><h2>Deterministic, not generative</h2><p>No inpainting model guesses what should be under the sparkle. The tool uses calibrated alpha maps for known Gemini watermark profiles and reverses the original blend mathematically.</p></div>
+      <div class="steps-grid">
+        <article class="step-card"><span class="step-number">01</span><h3>Detect</h3><p>Known watermark sizes and margins are scored against the bottom-right region. A fallback scan runs only when needed.</p></article>
+        <article class="step-card"><span class="step-number">02</span><h3>Reverse blend</h3><p>The calibrated alpha map is applied to reconstruct the RGB values that existed before the visible white sparkle was blended in.</p></article>
+        <article class="step-card"><span class="step-number">03</span><h3>Download</h3><p>The cleaned pixels are encoded in your browser. You preview the result and download it without sending the source image to a server.</p></article>
+      </div>
+    </section>
+
+    <section class="split-section shell">
+      <div class="feature-panel"><p class="section-kicker">AUTOMATE DOWNLOADS</p><h2>Prefer zero extra clicks?</h2><p>Install the lightweight userscript. It intercepts supported Gemini image downloads and cleans the visible watermark automatically while keeping the same local engine approach.</p><div class="feature-actions"><a class="button button-primary" href="https://raw.githubusercontent.com/Bl0ck154/gemini-watermark-remover-light/main/gemini-watermark-remover-light.user.js">Install userscript</a><a class="button button-ghost" href="https://github.com/Bl0ck154/gemini-watermark-remover-light#install" target="_blank" rel="noreferrer">Setup guide</a></div></div>
+      <div class="terminal-card"><div class="terminal-top"><span>profiles.json</span></div><pre><code>{
+  "current": ["24×24 preview", "48×48 light"],
+  "legacy": ["96×96 / 64px", "96×96 / 192px"],
+  "fallback": "confidence scan"
+}</code></pre></div>
+    </section>
+
+    <section class="faq-section shell">
+      <div class="section-heading compact"><p class="section-kicker">LIMITS & PRIVACY</p><h2>What this tool does — and doesn’t</h2></div>
+      <div class="faq-list">
+        <details open><summary>Does it upload my image?</summary><p>No. Image decoding, pixel processing and encoding all happen in the current browser tab. The page only loads the open-source remover data shipped with this project.</p></details>
+        <details><summary>Does it remove SynthID or other invisible provenance signals?</summary><p>No. This project targets the visible Gemini sparkle watermark only. It does not claim to remove invisible watermarking, metadata-based provenance systems or SynthID.</p></details>
+        <details><summary>Will it modify an image when detection is uncertain?</summary><p>No. The fallback scanner uses confidence thresholds. If a known profile cannot be identified confidently, the web tool stops and leaves your image untouched.</p></details>
+        <details><summary>Is this affiliated with Google or Gemini?</summary><p>No. This is an independent open-source utility. Gemini and related product names are trademarks of their respective owners.</p></details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer shell"><div><span class="brand-mark small" aria-hidden="true">✦</span> Gemini Watermark Remover Light</div><div class="footer-links"><a href="https://github.com/Bl0ck154/gemini-watermark-remover-light" target="_blank" rel="noreferrer">Source</a><a href="https://github.com/Bl0ck154/gemini-watermark-remover-light/blob/main/LICENSE" target="_blank" rel="noreferrer">MIT License</a></div></footer>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
