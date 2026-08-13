@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Replaced the redundant `Original format` web option with an explicit WebP output, so JPEG, PNG, and WebP are now three distinct download choices.
+- Added regression coverage preventing the duplicate output option from returning.
+- Updated the web profile badge to v0.3.0.
+
 - Added the compact current `36-v2` watermark profile, quantized from the upstream calibrated alpha map.
 - Added projected v2 margin candidates and included the 36 px profile in bottom-right fallback scanning.
 - Added official 1K-size priors and an ambiguity gate between the two best candidates to reduce wrong-region edits.
