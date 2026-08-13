@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - scripts/one-shot-engine-upgrade.mjs
+      - scripts/run-one-shot-engine-upgrade.mjs
       - .github/workflows/one-shot-engine-upgrade.yml
 
 permissions:
@@ -21,7 +22,7 @@ jobs:
         with:
           node-version: 22
       - name: Apply engine upgrade
-        run: node scripts/one-shot-engine-upgrade.mjs
+        run: node scripts/run-one-shot-engine-upgrade.mjs
       - name: Synchronize web calibration maps
         run: npm run sync:docs-maps
       - name: Verify
@@ -30,7 +31,7 @@ jobs:
           npm run check
       - name: Commit upgraded engine
         run: |
-          rm .github/workflows/one-shot-engine-upgrade.yml scripts/one-shot-engine-upgrade.mjs
+          rm .github/workflows/one-shot-engine-upgrade.yml scripts/one-shot-engine-upgrade.mjs scripts/run-one-shot-engine-upgrade.mjs
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
