@@ -1,32 +1,54 @@
-# Gemini Watermark Remover Light
+# ✦ Gemini Watermark Remover Light
 
-A small, download-focused userscript for removing the visible Gemini sparkle watermark from generated images. It keeps the proven `0.1.13` interception flow without loading the full upstream UI/runtime.
+A **small, local-first userscript** for supported Gemini image downloads. Light keeps the proven standalone runtime, ships its calibrated image data inside the script, and avoids loading a mutable upstream runtime through `@require`.
 
-## Why version 0.2.5?
+[**Install userscript**](https://raw.githubusercontent.com/Bl0ck154/gemini-watermark-remover-light/main/gemini-watermark-remover-light.user.js) · [Changelog](./CHANGELOG.md) · [MIT License](./LICENSE)
 
-Versions `0.2.0`–`0.2.2` were compatibility bridges that loaded the live upstream userscript through `@require`. That made Light inherit upstream regressions and removed its main advantage.
+![JavaScript](https://img.shields.io/badge/JavaScript-browser--native-F7DF1E?logo=javascript&logoColor=111)
+![Runtime](https://img.shields.io/badge/runtime-standalone-55e99a)
+![Backend](https://img.shields.io/badge/backend-none-7aa7ff)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
-`0.2.5` restores the Light `0.1.13` runtime, but keeps a version greater than `0.2.2` so userscript managers can update normally. It preserves the original gist `@namespace` for in-place updates while moving `@updateURL` to this repository. It also:
+## Why Light?
 
-- embeds the calibrated alpha maps instead of fetching a mutable gist;
-- supports the current light 48×48 watermark at 96 px right/bottom margins;
-- supports half-scale 1K previews with a 24×24 watermark at 48 px margins;
-- applies the calibrated `0.55` alpha gain used by current large Gemini downloads;
-- retains legacy 96×96 profiles and fallback scanning;
-- processes downloads locally in the browser.
+Versions `0.2.0`–`0.2.2` temporarily acted as compatibility bridges and loaded the live upstream userscript through `@require`. That made Light inherit upstream regressions and removed the main reason for keeping a lightweight fork.
+
+`0.2.5` returns to the proven standalone Light runtime while keeping normal userscript updates working. It:
+
+- embeds calibrated alpha maps instead of fetching mutable runtime data;
+- supports current light profiles and half-scale previews;
+- retains legacy 96×96 profiles and bounded fallback scanning;
+- keeps the legacy gist `@namespace` so existing installs update in place;
+- points `@updateURL` and `@downloadURL` at this repository;
+- processes supported image downloads locally in the browser;
+- has no runtime dependencies or build step.
 
 ## Install
 
-Open the [raw userscript](https://raw.githubusercontent.com/Bl0ck154/gemini-watermark-remover-light/main/gemini-watermark-remover-light.user.js) with Tampermonkey or another compatible userscript manager.
+1. Install [Tampermonkey](https://www.tampermonkey.net/) or another compatible userscript manager.
+2. Open the [raw userscript](https://raw.githubusercontent.com/Bl0ck154/gemini-watermark-remover-light/main/gemini-watermark-remover-light.user.js).
+3. Confirm installation.
+4. Use Gemini normally; supported image download flows are handled by the script.
 
 Supported pages:
 
 - `https://gemini.google.com/*`
 - `https://business.gemini.google/*`
 
+## Current profile coverage
+
+| Profile | Placement | Notes |
+|---|---:|---|
+| 24×24 preview | 48 px right / bottom | half-scale preview, gain `0.55` |
+| 48×48 light | 96 px right / bottom | current large-download profile, gain `0.55` |
+| 48×48 light | 32 px right / bottom | smaller/current layout |
+| 96×96 legacy | 64 px right / bottom | legacy profile |
+| 96×96 2026 | 192 px right / bottom | later legacy-size placement |
+| fallback scan | bounded bottom-right area | requires a confidence threshold and score gap |
+
 ## Verified regression
 
-The current profile was verified locally against a 2420×1728 Gemini JPG where the old 96×96 profile produced a dark artifact. The selected profile was:
+The current profile was verified locally against a `2420×1728` Gemini JPG where the old 96×96 profile produced a dark artifact:
 
 ```text
 watermark box: x=2276..2323, y=1584..1631
@@ -34,6 +56,16 @@ size:          48×48
 margins:       right=96, bottom=96
 alpha gain:    0.55
 ```
+
+## Design goals
+
+**Small surface area.** The project stays download-focused instead of pulling in a larger UI/runtime.
+
+**Local processing.** There is no project backend for image processing.
+
+**Predictable updates.** Light changes only when this repository publishes a new version; it no longer inherits a live upstream script automatically.
+
+**Fail-safe fallback.** When fixed candidates are insufficient, the fallback scan uses explicit confidence requirements instead of accepting any best-looking location.
 
 ## Development
 
@@ -44,10 +76,25 @@ npm run check
 npm test
 ```
 
-## Українською
+The regression suite verifies the userscript identity/update path, embedded calibration dimensions, and synthetic round-trip behavior for current profiles.
 
-Це повернення легкого рушія `0.1.13`, а не повного upstream-комбайна. Версія `0.2.5` також обробляє зменшені 1K preview: 24×24 watermark із відступами 48 px. Старий gist `@namespace` навмисно збережений, а `@updateURL` уже веде в репозиторій.
+## Project layout
+
+```text
+gemini-watermark-remover-light.user.js  # standalone userscript
+README.md                                # project documentation
+CHANGELOG.md                             # release history
+tests/userscript.test.mjs               # regression tests
+```
+
+## Scope
+
+This project is focused on the **visible Gemini image mark** documented by the upstream reverse-alpha approach. It does not claim to handle SynthID or other invisible provenance mechanisms.
 
 ## Credits
 
-Based on the reverse-alpha approach from [GargantuaX/gemini-watermark-remover](https://github.com/GargantuaX/gemini-watermark-remover) and the original calibration work credited by that project. Released under the MIT License.
+Based on the reverse-alpha approach from [GargantuaX/gemini-watermark-remover](https://github.com/GargantuaX/gemini-watermark-remover) and the original calibration work credited by that project.
+
+This is an independent open-source project and is not affiliated with Google. Gemini and related names are trademarks of their respective owners.
+
+Released under the [MIT License](./LICENSE).
