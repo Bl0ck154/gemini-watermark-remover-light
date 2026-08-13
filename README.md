@@ -85,7 +85,10 @@ gemini-watermark-remover-light.user.js  # standalone userscript
 README.md                                # project documentation
 CHANGELOG.md                             # release history
 tests/userscript.test.mjs               # regression tests
+docs/                                    # static GitHub Pages project site
 ```
+
+The polished static project page is kept in [`docs/`](./docs/) so it can be published directly with GitHub Pages from the `main` branch.
 
 ## Scope
 
