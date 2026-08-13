@@ -20,7 +20,7 @@ const elements = {
   dropZone: document.querySelector('#drop-zone'),
   dropIdle: document.querySelector('#drop-idle'),
   fileInput: document.querySelector('#file-input'),
-  chooseFile: document.querySelector('#choose-file'),
+  chooseFile: document.querySelector('#drop-idle'),
   processing: document.querySelector('#processing-state'),
   result: document.querySelector('#result-state'),
   error: document.querySelector('#error-state'),
@@ -34,7 +34,7 @@ const elements = {
   comparisonRange: document.querySelector('#comparison-range'),
   resultTitle: document.querySelector('#result-title'),
   resultDetails: document.querySelector('#result-details'),
-  outputFormat: document.querySelector('#output-format'),
+  outputFormats: document.querySelectorAll('input[name="output-format"]'),
   replaceFile: document.querySelector('#replace-file'),
   retryFile: document.querySelector('#retry-file'),
   downloadFile: document.querySelector('#download-file')
@@ -202,10 +202,11 @@ function canvasToBlob(canvas, type, quality) {
 }
 
 function outputTypeFor(file) {
-  if (elements.outputFormat.value === 'original') {
+  const selectedFormat = document.querySelector('input[name="output-format"]:checked')?.value || 'image/jpeg';
+  if (selectedFormat === 'original') {
     return ['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ? file.type : 'image/png';
   }
-  return elements.outputFormat.value;
+  return selectedFormat;
 }
 
 function outputNameFor(file, type) {
@@ -270,7 +271,7 @@ async function processFile(file) {
     currentResult = { blob: output, beforeUrl, afterUrl, filename: outputNameFor(file, type) };
     elements.beforeImage.src = beforeUrl;
     elements.afterImage.src = afterUrl;
-    elements.resultTitle.textContent = 'Mark removed';
+    elements.resultTitle.textContent = 'Watermark removed';
     elements.resultDetails.textContent = `${width} × ${height} · ${config.size}px profile · ${formatBytes(output.size)}`;
     elements.comparisonRange.value = '50';
     updateComparison();
@@ -297,9 +298,11 @@ elements.chooseFile.addEventListener('click', resetInput);
 elements.replaceFile.addEventListener('click', resetInput);
 elements.retryFile.addEventListener('click', resetInput);
 elements.fileInput.addEventListener('change', () => processFile(elements.fileInput.files[0]));
-elements.outputFormat.addEventListener('change', () => {
-  if (currentInputFile && !elements.result.hidden) processFile(currentInputFile);
-});
+for (const format of elements.outputFormats) {
+  format.addEventListener('change', () => {
+    if (currentInputFile && !elements.result.hidden) processFile(currentInputFile);
+  });
+}
 elements.comparisonRange.addEventListener('input', updateComparison);
 new ResizeObserver(updateComparison).observe(elements.comparison);
 

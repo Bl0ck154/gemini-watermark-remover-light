@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://bl0ck154.github.io/gemini-watermark-remover-light/sitemap.xml

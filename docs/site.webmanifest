@@ -1,0 +1,17 @@
+{
+  "name": "Gemini Watermark Remover Light",
+  "short_name": "Gemini Remover",
+  "description": "Remove visible Gemini image watermarks and download a clean copy.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#edf2f0",
+  "theme_color": "#315cdd",
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -4,18 +4,49 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#edf2f0">
-  <meta name="description" content="Remove supported visible Gemini image marks locally in your browser, or install the lightweight userscript.">
+  <meta name="description" content="Remove visible Gemini image watermarks and download a clean copy.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://bl0ck154.github.io/gemini-watermark-remover-light/">
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="./site.webmanifest">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Gemini Watermark Remover Light">
+  <meta property="og:title" content="Gemini Watermark Remover Light">
+  <meta property="og:description" content="Drop a Gemini image, remove the visible watermark, and download a clean copy.">
+  <meta property="og:url" content="https://bl0ck154.github.io/gemini-watermark-remover-light/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Gemini Watermark Remover Light">
+  <meta name="twitter:description" content="Remove visible Gemini image watermarks and choose a smaller JPEG, lossless PNG, or the original file type.">
   <title>Gemini Watermark Remover Light</title>
   <link rel="stylesheet" href="./styles.css">
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Gemini Watermark Remover Light",
+      "url": "https://bl0ck154.github.io/gemini-watermark-remover-light/",
+      "description": "Remove visible Gemini image watermarks and download the result as JPEG, PNG, or WebP.",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "Any",
+      "browserRequirements": "Requires a modern browser with Canvas support",
+      "isAccessibleForFree": true,
+      "license": "https://github.com/Bl0ck154/gemini-watermark-remover-light/blob/main/LICENSE",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+  </script>
   <script type="module" src="./app.js"></script>
 </head>
 <body>
-  <a class="skip-link" href="#workbench">Skip to image tool</a>
+  <a class="skip-link" href="#drop-zone">Skip to image upload</a>
 
   <header class="site-header">
     <a class="wordmark" href="#top" aria-label="Gemini Watermark Remover Light home">
       <span class="wordmark-mark" aria-hidden="true">✦</span>
-      <span>Remover <em>Light</em></span>
+      <span>Gemini Watermark Remover <em>Light</em></span>
     </a>
     <nav aria-label="Primary navigation">
       <a href="#how-it-works">How it works</a>
@@ -25,66 +56,19 @@
   </header>
 
   <main id="top">
-    <section class="hero" aria-labelledby="hero-title">
-      <div class="hero-copy">
-        <p class="kicker">A browser-local image utility</p>
-        <h1 id="hero-title">Drop the image.<br><span>Keep the pixels private.</span></h1>
-        <p class="hero-lede">Remove supported visible Gemini image marks without uploading the file anywhere. The same calibrated approach as the userscript now runs right here.</p>
-        <ul class="trust-list" aria-label="Privacy and compatibility notes">
-          <li><span aria-hidden="true"></span>No upload</li>
-          <li><span aria-hidden="true"></span>No backend</li>
-          <li><span aria-hidden="true"></span>JPG, PNG &amp; WebP</li>
-        </ul>
-      </div>
-      <aside class="profile-card" aria-label="Current calibration profile">
-        <div class="profile-card-top">
-          <span>CAL / CURRENT</span>
-          <span>v0.2.5</span>
-        </div>
-        <div class="profile-diagram" aria-hidden="true">
-          <span class="frame-corner frame-corner-a"></span>
-          <span class="frame-corner frame-corner-b"></span>
-          <span class="frame-corner frame-corner-c"></span>
-          <span class="frame-corner frame-corner-d"></span>
-          <span class="watermark-cell">✦</span>
-          <span class="measure measure-x">96 px</span>
-          <span class="measure measure-y">96 px</span>
-        </div>
-        <div class="profile-data"><span>MARK</span><strong>48 × 48</strong><span>GAIN</span><strong>0.55</strong></div>
-      </aside>
-    </section>
-
-    <section class="workbench" id="workbench" aria-labelledby="workbench-title">
-      <div class="section-label"><span>01</span><p>Browser workbench</p></div>
-      <div class="workbench-heading">
-        <div>
-          <h2 id="workbench-title">Process one image</h2>
-          <p>Your file stays in this tab and is released when you choose another one or close the page.</p>
-        </div>
-        <label class="format-control" for="output-format">
-          <span>Download format</span>
-          <select id="output-format">
-            <option value="image/png">Lossless PNG</option>
-            <option value="image/jpeg">JPG · 92%</option>
-            <option value="original">Match input</option>
-          </select>
-        </label>
-      </div>
-
+    <section class="workbench" id="workbench" aria-label="Gemini Watermark Remover">
       <div class="drop-zone" id="drop-zone">
         <input id="file-input" type="file" accept="image/jpeg,image/png,image/webp" hidden>
-        <div class="drop-idle" id="drop-idle">
-          <button class="drop-button" id="choose-file" type="button" aria-label="Choose an image">
-            <span class="drop-symbol" aria-hidden="true">＋</span>
-            <span><strong>Choose an image</strong><small>or drag it onto this area</small></span>
-          </button>
-          <p>Images are decoded and processed by your browser. Nothing leaves this device.</p>
-        </div>
+        <button class="drop-idle" id="drop-idle" type="button">
+          <span class="drop-symbol" aria-hidden="true"><span></span></span>
+          <span class="drop-copy"><strong>Drop an image here</strong><small>or click anywhere in this field to choose one</small></span>
+          <span class="file-types">JPG · PNG · WEBP</span>
+        </button>
 
         <div class="processing-state" id="processing-state" hidden role="status" aria-live="polite">
           <span class="scan-mark" aria-hidden="true"></span>
-          <strong>Reading calibration…</strong>
-          <p>Checking supported mark sizes and placements.</p>
+          <strong>Removing watermark…</strong>
+          <p>This usually takes only a moment.</p>
         </div>
 
         <div class="result-state" id="result-state" hidden aria-live="polite">
@@ -97,7 +81,7 @@
             <input class="comparison-range" id="comparison-range" type="range" min="0" max="100" value="50" aria-label="Compare original and processed image">
           </div>
           <div class="result-toolbar">
-            <div class="result-meta"><span class="success-dot" aria-hidden="true"></span><p><strong id="result-title" tabindex="-1">Mark removed</strong><small id="result-details"></small></p></div>
+            <div class="result-meta"><span class="success-dot" aria-hidden="true"></span><p><strong id="result-title" tabindex="-1">Watermark removed</strong><small id="result-details"></small></p></div>
             <div class="result-actions">
               <button class="secondary-button" id="replace-file" type="button">Choose another</button>
               <button class="primary-button" id="download-file" type="button">Download image <span aria-hidden="true">↓</span></button>
@@ -111,33 +95,70 @@
           <button class="secondary-button" id="retry-file" type="button">Choose another</button>
         </div>
       </div>
+
+      <fieldset class="format-picker">
+        <legend>Choose download format</legend>
+        <label class="format-option">
+          <input type="radio" name="output-format" value="image/jpeg" checked>
+          <span class="radio-mark" aria-hidden="true"></span>
+          <span><strong>Smaller JPEG</strong><small>Best for sharing. Much smaller file at 92% quality.</small></span>
+          <em>Recommended</em>
+        </label>
+        <label class="format-option">
+          <input type="radio" name="output-format" value="image/png">
+          <span class="radio-mark" aria-hidden="true"></span>
+          <span><strong>Lossless PNG</strong><small>Keeps every processed pixel. The file will be larger.</small></span>
+        </label>
+        <label class="format-option">
+          <input type="radio" name="output-format" value="original">
+          <span class="radio-mark" aria-hidden="true"></span>
+          <span><strong>Original format</strong><small>Keeps the same JPG, PNG, or WebP file type.</small></span>
+        </label>
+      </fieldset>
+      <p class="privacy-note">Your image is processed on this device and is not sent anywhere.</p>
     </section>
 
     <section class="method" id="how-it-works" aria-labelledby="method-title">
-      <div class="section-label"><span>02</span><p>Method &amp; scope</p></div>
-      <div class="method-grid">
-        <div class="method-copy">
-          <h2 id="method-title">A narrow tool,<br>by design.</h2>
-          <p>Light reverses the known alpha blend for supported visible Gemini marks. It tests calibrated placements, measures confidence, and stops instead of guessing when the signal is weak.</p>
-          <a href="https://github.com/Bl0ck154/gemini-watermark-remover-light#current-profile-coverage">See supported profiles <span aria-hidden="true">→</span></a>
-        </div>
-        <ol class="method-steps">
-          <li><span>01 / Decode</span><p>The browser reads your image into a local canvas.</p></li>
-          <li><span>02 / Match</span><p>Embedded maps score known sizes and bottom-right placements.</p></li>
-          <li><span>03 / Reverse</span><p>The matched alpha blend is reversed and a fresh image is encoded.</p></li>
-        </ol>
+      <div class="method-visual">
+        <p class="section-kicker">How it works</p>
+        <h2 id="method-title">Choose. Compare. Download.</h2>
+        <aside class="profile-card" aria-label="Current Gemini watermark profile illustration">
+          <div class="profile-card-top"><span>CAL / CURRENT</span><span>v0.2.5</span></div>
+          <div class="profile-diagram" aria-hidden="true">
+            <span class="frame-corner frame-corner-a"></span>
+            <span class="frame-corner frame-corner-b"></span>
+            <span class="frame-corner frame-corner-c"></span>
+            <span class="frame-corner frame-corner-d"></span>
+            <span class="watermark-cell">✦</span>
+            <span class="measure measure-x">96 px</span>
+            <span class="measure measure-y">96 px</span>
+          </div>
+          <div class="profile-data"><span>MARK</span><strong>48 × 48</strong><span>GAIN</span><strong>0.55</strong></div>
+        </aside>
       </div>
-      <div class="scope-note"><strong>Scope note</strong><p>This handles the visible image mark only. It does not remove SynthID or other invisible provenance signals.</p></div>
+      <ol class="method-steps">
+        <li><span>1</span><div><strong>Choose</strong><p>Drop a Gemini image into the field above.</p></div></li>
+        <li><span>2</span><div><strong>Compare</strong><p>Drag the before-and-after line to check the result.</p></div></li>
+        <li><span>3</span><div><strong>Download</strong><p>Save it as a smaller JPEG, lossless PNG, or the original file type.</p></div></li>
+      </ol>
     </section>
 
     <section class="userscript-cta" aria-labelledby="userscript-title">
-      <div><p class="kicker">Prefer the automatic route?</p><h2 id="userscript-title">Install once.<br>Download normally.</h2></div>
-      <div><p>The userscript hooks supported Gemini download flows and processes images locally before the browser saves them.</p><a class="large-install" href="https://raw.githubusercontent.com/Bl0ck154/gemini-watermark-remover-light/main/gemini-watermark-remover-light.user.js">Install Light 0.2.5 <span aria-hidden="true">↗</span></a></div>
+      <div><p class="section-kicker">Want this inside Gemini?</p><h2 id="userscript-title">Install once.<br>Download normally.</h2></div>
+      <div class="install-guide">
+        <p>The userscript automatically cleans supported images when you download them from Gemini.</p>
+        <ol>
+          <li><span>1</span><p>Install <a href="https://www.tampermonkey.net/">Tampermonkey</a> for your browser.</p></li>
+          <li><span>2</span><p>Open the userscript with the button below.</p></li>
+          <li><span>3</span><p>Confirm the installation, then use Gemini normally.</p></li>
+        </ol>
+        <a class="large-install" href="https://raw.githubusercontent.com/Bl0ck154/gemini-watermark-remover-light/main/gemini-watermark-remover-light.user.js">Install Gemini Watermark Remover Light <span aria-hidden="true">↗</span></a>
+      </div>
     </section>
   </main>
 
   <footer>
-    <div class="wordmark"><span class="wordmark-mark" aria-hidden="true">✦</span><span>Remover <em>Light</em></span></div>
+    <div class="wordmark"><span class="wordmark-mark" aria-hidden="true">✦</span><span>Gemini Watermark Remover <em>Light</em></span></div>
     <p>Open source · MIT License · Not affiliated with Google</p>
     <div><a href="https://github.com/Bl0ck154/gemini-watermark-remover-light">GitHub</a><a href="https://github.com/Bl0ck154/gemini-watermark-remover-light/blob/main/CHANGELOG.md">Changelog</a></div>
   </footer>
