@@ -2,7 +2,7 @@
 
 A **small, local-first userscript** for supported Gemini image downloads. Light keeps the proven standalone runtime, ships its calibrated image data inside the script, and avoids loading a mutable upstream runtime through `@require`.
 
-[**Install userscript**](https://raw.githubusercontent.com/Bl0ck154/gemini-watermark-remover-light/main/gemini-watermark-remover-light.user.js) · [Changelog](./CHANGELOG.md) · [MIT License](./LICENSE)
+[**Open web tool**](https://bl0ck154.github.io/gemini-watermark-remover-light/) · [**Install userscript**](https://raw.githubusercontent.com/Bl0ck154/gemini-watermark-remover-light/main/gemini-watermark-remover-light.user.js) · [Changelog](./CHANGELOG.md) · [MIT License](./LICENSE)
 
 ![JavaScript](https://img.shields.io/badge/JavaScript-browser--native-F7DF1E?logo=javascript&logoColor=111)
 ![Runtime](https://img.shields.io/badge/runtime-standalone-55e99a)
@@ -34,6 +34,14 @@ Supported pages:
 
 - `https://gemini.google.com/*`
 - `https://business.gemini.google/*`
+
+## Web tool
+
+Prefer a one-off workflow? The project site includes a functional drag-and-drop tool with before/after comparison and PNG, JPG, or WebP download. Image decoding, profile matching, alpha reversal, and encoding all happen in the current browser tab; the site has no upload endpoint or processing backend.
+
+[**Process an image in the browser →**](https://bl0ck154.github.io/gemini-watermark-remover-light/#workbench)
+
+The public upload flow is deliberately stricter than the userscript: it requires a confident calibrated match and stops instead of modifying an arbitrary image. Input is limited to JPG, PNG, or WebP, 80 MB compressed, 40 megapixels, and 16,384 pixels per side.
 
 ## Current profile coverage
 
@@ -76,7 +84,9 @@ npm run check
 npm test
 ```
 
-The regression suite verifies the userscript identity/update path, embedded calibration dimensions, and synthetic round-trip behavior for current profiles.
+Run `npm run sync:docs-maps` after changing embedded calibration data. `npm run check` fails when the generated web copy is out of sync.
+
+The regression suite verifies the userscript identity/update path, embedded calibration dimensions, synthetic round-trip behavior, web-map parity, and safety guards for public uploads.
 
 ## Project layout
 
@@ -85,10 +95,11 @@ gemini-watermark-remover-light.user.js  # standalone userscript
 README.md                                # project documentation
 CHANGELOG.md                             # release history
 tests/userscript.test.mjs               # regression tests
-docs/                                    # static GitHub Pages project site
+docs/                                    # functional GitHub Pages image tool
+scripts/sync-docs-maps.mjs               # keeps web calibration data in sync
 ```
 
-The polished static project page is kept in [`docs/`](./docs/) so it can be published directly with GitHub Pages from the `main` branch.
+The project page is kept in [`docs/`](./docs/) and can be published directly with GitHub Pages from the `main` branch. It is a static site: there is no build step, external runtime, or backend.
 
 ## Scope
 

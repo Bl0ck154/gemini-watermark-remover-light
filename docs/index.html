@@ -2,26 +2,144 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#080c16">
-  <meta name="description" content="Gemini Watermark Remover Light — lightweight, local-first browser userscript.">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#edf2f0">
+  <meta name="description" content="Remove supported visible Gemini image marks locally in your browser, or install the lightweight userscript.">
   <title>Gemini Watermark Remover Light</title>
-  <style>
-    :root{color-scheme:dark;--bg:#070b14;--panel:#10182a;--text:#f6f8ff;--muted:#9da9bd;--line:rgba(255,255,255,.11);--green:#8bf5ba;--blue:#7aa7ff}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(circle at 50% -10%,rgba(75,111,185,.2),transparent 35rem),linear-gradient(#080c16,var(--bg));color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6}.shell{width:min(1080px,calc(100% - 34px));margin:auto}a{color:inherit;text-decoration:none}.top{height:76px;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;align-items:center;gap:10px;font-weight:750;letter-spacing:-.02em}.mark{width:30px;height:30px;display:grid;place-items:center;border-radius:9px;border:1px solid rgba(139,245,186,.3);background:rgba(139,245,186,.08);color:var(--green)}.nav{display:flex;gap:10px;align-items:center}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 16px;border-radius:11px;border:1px solid var(--line);font-size:13px;font-weight:750}.btn.primary{border:0;color:#07140d;background:linear-gradient(#9cf8c6,#62e9a1)}.hero{text-align:center;padding:88px 0 90px}.eyebrow{display:inline-block;padding:6px 10px;border:1px solid rgba(139,245,186,.2);border-radius:999px;color:#b8e9ce;background:rgba(139,245,186,.06);font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.hero h1{margin:18px 0 22px;font-size:clamp(43px,7vw,76px);line-height:1.02;letter-spacing:-.055em}.hero h1 span{background:linear-gradient(90deg,#a8f7ca,#7fb8ff,#b7a6ff);background-clip:text;color:transparent}.hero p{max-width:760px;margin:0 auto 25px;color:var(--muted);font-size:18px}.actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}.pills{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:22px}.pills span{padding:6px 10px;border:1px solid var(--line);border-radius:999px;color:#c7d0df;font-size:11px}.section{padding:0 0 88px}.section h2{font-size:clamp(30px,4vw,44px);letter-spacing:-.04em;margin:0 0 10px}.lead{max-width:690px;color:var(--muted);margin:0 0 26px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}.card{min-height:205px;padding:24px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.012))}.card small{color:#718098;font-family:ui-monospace,monospace}.card h3{margin:42px 0 7px;font-size:21px}.card p{margin:0;color:var(--muted);font-size:13px}.release{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}.release>div{padding:28px;border:1px solid var(--line);border-radius:19px;background:rgba(255,255,255,.025)}.release p{color:var(--muted)}pre{margin:0;color:#bdd5ca;font-size:13px;white-space:pre-wrap}.footer{min-height:105px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;color:#7c899c;font-size:12px}.footer-links{display:flex;gap:16px}@media(max-width:720px){.nav>a:first-child{display:none}.hero{padding-top:64px}.hero p{font-size:15px}.grid,.release{grid-template-columns:1fr}.footer{align-items:flex-start;justify-content:center;flex-direction:column;gap:8px}.card{min-height:180px}}
-  </style>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.js"></script>
 </head>
 <body>
-  <header class="top shell"><a class="brand" href="#top"><span class="mark">✦</span>Gemini Remover Light</a><nav class="nav"><a class="btn" href="https://github.com/Bl0ck154/gemini-watermark-remover-light">GitHub</a><a class="btn primary" href="https://raw.githubusercontent.com/Bl0ck154/gemini-watermark-remover-light/main/gemini-watermark-remover-light.user.js">Install userscript</a></nav></header>
+  <a class="skip-link" href="#workbench">Skip to image tool</a>
+
+  <header class="site-header">
+    <a class="wordmark" href="#top" aria-label="Gemini Watermark Remover Light home">
+      <span class="wordmark-mark" aria-hidden="true">✦</span>
+      <span>Remover <em>Light</em></span>
+    </a>
+    <nav aria-label="Primary navigation">
+      <a href="#how-it-works">How it works</a>
+      <a href="https://github.com/Bl0ck154/gemini-watermark-remover-light">Source</a>
+      <a class="install-link" href="https://raw.githubusercontent.com/Bl0ck154/gemini-watermark-remover-light/main/gemini-watermark-remover-light.user.js">Install userscript <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+
   <main id="top">
-    <section class="hero shell"><div class="eyebrow">Lightweight · local-first · open source</div><h1>A smaller browser tool.<br><span>Built to stay reliable.</span></h1><p>A focused standalone userscript with embedded calibration data, no live upstream runtime dependency and no project backend.</p><div class="actions"><a class="btn primary" href="https://raw.githubusercontent.com/Bl0ck154/gemini-watermark-remover-light/main/gemini-watermark-remover-light.user.js">Install Light 0.2.5</a><a class="btn" href="https://github.com/Bl0ck154/gemini-watermark-remover-light">View source</a></div><div class="pills"><span>Browser-local</span><span>No runtime dependencies</span><span>Regression tested</span><span>MIT Licensed</span></div></section>
-    <section class="section shell"><h2>One job, less baggage</h2><p class="lead">Light stays deliberately small. The runtime and calibration data ship together, so the project does not inherit a second userscript at runtime.</p><div class="grid"><article class="card"><small>01</small><h3>Standalone</h3><p>No live bridge to a mutable upstream runtime.</p></article><article class="card"><small>02</small><h3>Local</h3><p>Supported image work happens inside the browser.</p></article><article class="card"><small>03</small><h3>Tested</h3><p>Regression checks protect identity, update behavior and current profiles.</p></article></div></section>
-    <section class="section shell"><div class="release"><div><h2>Current release: 0.2.5</h2><p>The standalone Light runtime supports current light layouts, half-scale previews and legacy profiles while preserving the existing userscript update identity.</p><div class="actions" style="justify-content:flex-start"><a class="btn primary" href="https://raw.githubusercontent.com/Bl0ck154/gemini-watermark-remover-light/main/gemini-watermark-remover-light.user.js">Install</a><a class="btn" href="https://github.com/Bl0ck154/gemini-watermark-remover-light/blob/main/CHANGELOG.md">Changelog</a></div></div><div><pre>{
-  "runtime": "browser-native",
-  "backend": null,
-  "update": "repository controlled",
-  "license": "MIT"
-}</pre></div></div></section>
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="kicker">A browser-local image utility</p>
+        <h1 id="hero-title">Drop the image.<br><span>Keep the pixels private.</span></h1>
+        <p class="hero-lede">Remove supported visible Gemini image marks without uploading the file anywhere. The same calibrated approach as the userscript now runs right here.</p>
+        <ul class="trust-list" aria-label="Privacy and compatibility notes">
+          <li><span aria-hidden="true"></span>No upload</li>
+          <li><span aria-hidden="true"></span>No backend</li>
+          <li><span aria-hidden="true"></span>JPG, PNG &amp; WebP</li>
+        </ul>
+      </div>
+      <aside class="profile-card" aria-label="Current calibration profile">
+        <div class="profile-card-top">
+          <span>CAL / CURRENT</span>
+          <span>v0.2.5</span>
+        </div>
+        <div class="profile-diagram" aria-hidden="true">
+          <span class="frame-corner frame-corner-a"></span>
+          <span class="frame-corner frame-corner-b"></span>
+          <span class="frame-corner frame-corner-c"></span>
+          <span class="frame-corner frame-corner-d"></span>
+          <span class="watermark-cell">✦</span>
+          <span class="measure measure-x">96 px</span>
+          <span class="measure measure-y">96 px</span>
+        </div>
+        <div class="profile-data"><span>MARK</span><strong>48 × 48</strong><span>GAIN</span><strong>0.55</strong></div>
+      </aside>
+    </section>
+
+    <section class="workbench" id="workbench" aria-labelledby="workbench-title">
+      <div class="section-label"><span>01</span><p>Browser workbench</p></div>
+      <div class="workbench-heading">
+        <div>
+          <h2 id="workbench-title">Process one image</h2>
+          <p>Your file stays in this tab and is released when you choose another one or close the page.</p>
+        </div>
+        <label class="format-control" for="output-format">
+          <span>Download format</span>
+          <select id="output-format">
+            <option value="image/png">Lossless PNG</option>
+            <option value="image/jpeg">JPG · 92%</option>
+            <option value="original">Match input</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="drop-zone" id="drop-zone">
+        <input id="file-input" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+        <div class="drop-idle" id="drop-idle">
+          <button class="drop-button" id="choose-file" type="button" aria-label="Choose an image">
+            <span class="drop-symbol" aria-hidden="true">＋</span>
+            <span><strong>Choose an image</strong><small>or drag it onto this area</small></span>
+          </button>
+          <p>Images are decoded and processed by your browser. Nothing leaves this device.</p>
+        </div>
+
+        <div class="processing-state" id="processing-state" hidden role="status" aria-live="polite">
+          <span class="scan-mark" aria-hidden="true"></span>
+          <strong>Reading calibration…</strong>
+          <p>Checking supported mark sizes and placements.</p>
+        </div>
+
+        <div class="result-state" id="result-state" hidden aria-live="polite">
+          <div class="comparison" id="comparison">
+            <img id="before-image" alt="Original image">
+            <div class="after-clip" id="after-clip"><img id="after-image" alt="Processed image"></div>
+            <div class="comparison-line" id="comparison-line" aria-hidden="true"><span>↔</span></div>
+            <span class="image-label image-label-before">Before</span>
+            <span class="image-label image-label-after">After</span>
+            <input class="comparison-range" id="comparison-range" type="range" min="0" max="100" value="50" aria-label="Compare original and processed image">
+          </div>
+          <div class="result-toolbar">
+            <div class="result-meta"><span class="success-dot" aria-hidden="true"></span><p><strong id="result-title" tabindex="-1">Mark removed</strong><small id="result-details"></small></p></div>
+            <div class="result-actions">
+              <button class="secondary-button" id="replace-file" type="button">Choose another</button>
+              <button class="primary-button" id="download-file" type="button">Download image <span aria-hidden="true">↓</span></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="error-state" id="error-state" hidden role="alert">
+          <span aria-hidden="true">!</span>
+          <div><strong id="error-title" tabindex="-1">Could not process this image</strong><p id="error-message"></p></div>
+          <button class="secondary-button" id="retry-file" type="button">Choose another</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="method" id="how-it-works" aria-labelledby="method-title">
+      <div class="section-label"><span>02</span><p>Method &amp; scope</p></div>
+      <div class="method-grid">
+        <div class="method-copy">
+          <h2 id="method-title">A narrow tool,<br>by design.</h2>
+          <p>Light reverses the known alpha blend for supported visible Gemini marks. It tests calibrated placements, measures confidence, and stops instead of guessing when the signal is weak.</p>
+          <a href="https://github.com/Bl0ck154/gemini-watermark-remover-light#current-profile-coverage">See supported profiles <span aria-hidden="true">→</span></a>
+        </div>
+        <ol class="method-steps">
+          <li><span>01 / Decode</span><p>The browser reads your image into a local canvas.</p></li>
+          <li><span>02 / Match</span><p>Embedded maps score known sizes and bottom-right placements.</p></li>
+          <li><span>03 / Reverse</span><p>The matched alpha blend is reversed and a fresh image is encoded.</p></li>
+        </ol>
+      </div>
+      <div class="scope-note"><strong>Scope note</strong><p>This handles the visible image mark only. It does not remove SynthID or other invisible provenance signals.</p></div>
+    </section>
+
+    <section class="userscript-cta" aria-labelledby="userscript-title">
+      <div><p class="kicker">Prefer the automatic route?</p><h2 id="userscript-title">Install once.<br>Download normally.</h2></div>
+      <div><p>The userscript hooks supported Gemini download flows and processes images locally before the browser saves them.</p><a class="large-install" href="https://raw.githubusercontent.com/Bl0ck154/gemini-watermark-remover-light/main/gemini-watermark-remover-light.user.js">Install Light 0.2.5 <span aria-hidden="true">↗</span></a></div>
+    </section>
   </main>
-  <footer class="footer shell"><div>✦ Gemini Watermark Remover Light</div><div class="footer-links"><a href="https://github.com/Bl0ck154/gemini-watermark-remover-light">Source</a><a href="https://github.com/Bl0ck154/gemini-watermark-remover-light/blob/main/LICENSE">MIT License</a></div></footer>
+
+  <footer>
+    <div class="wordmark"><span class="wordmark-mark" aria-hidden="true">✦</span><span>Remover <em>Light</em></span></div>
+    <p>Open source · MIT License · Not affiliated with Google</p>
+    <div><a href="https://github.com/Bl0ck154/gemini-watermark-remover-light">GitHub</a><a href="https://github.com/Bl0ck154/gemini-watermark-remover-light/blob/main/CHANGELOG.md">Changelog</a></div>
+  </footer>
 </body>
 </html>

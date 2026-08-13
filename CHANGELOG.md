@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Turned the GitHub Pages project site into a functional local drag-and-drop image tool.
+- Added confidence-gated profile matching, before/after comparison, and PNG, JPG, or WebP downloads.
+- Added upload size and decoded-pixel limits, stale-job protection, and accessible processing states.
+- Added generated calibration-map synchronization between the userscript and web tool.
+
 ## 0.2.5
 
 - Added half-scale 1K preview support with a calibrated 24×24 alpha map, 48 px margins, and 0.55 gain.
