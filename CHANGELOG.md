@@ -3,18 +3,21 @@
 ## Unreleased
 
 - Added experimental **Video Light** as a separate GitHub Pages tool for local MP4 processing.
-- Replaced the fixed 12-frame detector with adaptive sampling at roughly 3 detection frames per second, bounded to 18–60 samples; a 10-second clip now uses 30 samples while export still processes every decoded frame.
+- Replaced the fixed 12-frame detector with adaptive sampling at roughly 3 detection frames per second, bounded to 18–60 samples; export still processes every decoded frame.
 - Expanded smart search to score multiple representative frames instead of effectively trusting only three frames during fallback scanning.
 - Added bottom-right smart search for relocated and smaller diamond variants instead of trusting only a few hard-coded positions.
 - Raised the detection gate and added ambiguity rejection so weak matches stop instead of modifying the wrong region.
 - Added upstream-style video alpha edge boosting, automatic edge/gain calibration on sampled frames, and bounded per-frame gain refinement.
-- Replaced the old four-neighbor soft blur with **Enhanced cleanup**: an edge-aware watermark-footprint mask, local inpaint/repair, and texture-preserving blend aimed specifically at compression halo around the removed mark.
-- Replaced the first manual video mux/export path with Mediabunny `Conversion`, so source frame timing is preserved by the media pipeline and the primary audio track is kept when supported.
+- Replaced the old four-neighbor soft blur with deterministic footprint cleanup: an edge-aware watermark mask, local inpaint/repair, and texture-preserving blend aimed specifically at compression halo around the removed mark.
+- Added default **High-quality cleanup** with an on-demand local FDnCNN pass over the watermark region. WebGPU is preferred when available and WASM is used as fallback; if the runtime fails, deterministic cleanup continues automatically.
+- Kept the timing-safe Mediabunny `Conversion` export path and wrapped its async frame processor instead of reintroducing the earlier manual mux path.
 - Reworked the Video Light page to use the upload field as the complete workspace: selected-video preview, remove/choose-another controls, processing state, and the final large preview all live in the same field.
 - Replaced the two small result players with one large preview and an `Original / Cleaned` switch.
-- Replaced terse video settings with explained cleanup and 8/12/18 Mbps bitrate choices; 12 Mbps is the recommended default and bitrate is explicitly documented as output compression only.
-- Added Video Light regression coverage, syntax checks, site navigation, and sitemap discovery.
-- Video Light intentionally avoids a backend and ffmpeg.wasm. The current enhanced cleanup remains Canvas-based; optional local WebGPU/WASM FDnCNN cleanup can be added separately.
+- Rebuilt the selected-video close icon from centered CSS strokes so it no longer depends on the off-center font glyph.
+- Removed developer-facing metadata from the public video UI: sample counts, audio codec state, frame counters, detection coordinates, edge values, and gain values are no longer shown to end users.
+- Simplified cleanup copy to `High-quality cleanup / Basic` and kept 12 Mbps as the recommended bitrate; bitrate is explicitly documented as output compression only.
+- Added regression coverage and syntax checking for the Video Light bootstrap/FDnCNN layer.
+- Video Light still avoids a backend and ffmpeg.wasm. User media remains local; the pinned denoise model is downloaded only when the high-quality mode needs it.
 
 - Replaced the redundant `Original format` web option with an explicit WebP output, so JPEG, PNG, and WebP are now three distinct download choices.
 - Added regression coverage preventing the duplicate output option from returning.
