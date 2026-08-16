@@ -1,0 +1,1 @@
+Video Light is a local-only GitHub Pages video remover. v1 uses Mediabunny + WebCodecs, existing alpha calibration, multi-frame detection, confidence gating, bounded alpha adjustment, and soft residual cleanup. It deliberately omits ffmpeg.wasm and bundled ML models.
