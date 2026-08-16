@@ -1,0 +1,1 @@
+Video Light v1: local MP4 processing in the browser with multi-frame diamond detection, reverse alpha removal, soft residual cleanup, WebCodecs H.264 export, and source-audio copy where compatible. No server, no ffmpeg.wasm, no bundled ML model.
