@@ -1,1 +1,0 @@
-Video Light v1 processes MP4 locally in the browser. It uses Mediabunny for demux/mux, WebCodecs for H.264, calibrated alpha maps, multi-frame detection, confidence gates, bounded per-frame gain, and optional soft residual cleanup. No backend, ffmpeg.wasm, or bundled neural model in v1.

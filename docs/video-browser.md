@@ -1,1 +1,0 @@
-Browser-only Video Light v1 architecture: local MP4 demux/mux through Mediabunny, native WebCodecs AVC export, existing calibration maps, multi-frame detection, stable geometry, per-frame confidence gating, bounded alpha gain, and optional soft residual cleanup. No server, ffmpeg.wasm, or neural model bundled in v1.

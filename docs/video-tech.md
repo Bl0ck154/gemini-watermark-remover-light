@@ -1,1 +1,0 @@
-Local-only static browser implementation: Mediabunny demux/mux, WebCodecs AVC encode, calibrated alpha maps, multi-frame detection, bounded per-frame gain, confidence gating, and optional soft residual cleanup. No backend or ffmpeg.wasm in v1.
