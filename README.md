@@ -33,17 +33,18 @@ Video Light is a separate browser-only MP4 tool for supported visible Gemini/Veo
 Current pipeline:
 
 1. Read the local MP4 with Mediabunny and show the selected clip directly inside the upload workspace.
-2. Sample roughly **3 detection frames per second**, bounded to **18–60 samples**. A 10-second clip therefore uses 30 detection samples. These samples only lock/calibrate the watermark; export still processes every decoded frame.
-3. Score known layouts and, when needed, search the bottom-right area using multiple representative frames for relocated/smaller diamond variants.
-4. Calibrate the video alpha profile by testing several edge-boost strengths and reverse-alpha gains on sampled frames.
-5. Process every frame with bounded per-frame gain refinement and optional **Enhanced cleanup**, which uses an edge-aware watermark-footprint mask and local repair to reduce the compression halo.
-6. Rebuild the MP4 through Mediabunny's Conversion API and native WebCodecs H.264, preserving source timing and keeping the primary audio track when conversion supports it.
+2. Sample roughly **3 detection frames per second**, bounded to **18–60 samples**. These samples only locate and calibrate the watermark; export still processes every decoded frame.
+3. Score known layouts and, when needed, search the bottom-right area using multiple representative frames for relocated or smaller diamond variants.
+4. Calibrate the video alpha profile by testing several edge strengths and reverse-alpha gains on sampled frames.
+5. Process every frame with reverse-alpha removal plus deterministic footprint repair.
+6. In the default **High-quality cleanup** mode, run a small local FDnCNN denoiser over only the watermark region to reduce compression halo. WebGPU is preferred when available; WASM is the fallback.
+7. Rebuild the MP4 through Mediabunny's Conversion API and native WebCodecs H.264, preserving source timing and keeping the primary audio track when conversion supports it.
 
 Current scope is deliberately conservative: low-confidence or ambiguous clips stop instead of blindly modifying the wrong region.
 
-**The video file is not uploaded.** The page loads the pinned Mediabunny browser module from jsDelivr; video processing itself stays on-device. Current Chrome/Edge are the primary browser target because Video Light needs H.264 WebCodecs support.
+**The video file is not uploaded.** The page loads pinned browser dependencies and the cleanup model on demand; inference and video processing stay on-device. Current Chrome/Edge are the primary browser target because Video Light needs H.264 WebCodecs support.
 
-Video Light intentionally does **not** bundle ffmpeg.wasm or a neural denoise model. The current Enhanced cleanup is Canvas-based and local; an optional WebGPU/WASM FDnCNN mode can still be added later if difficult compressed clips need stronger cleanup.
+The FDnCNN model is loaded only when High-quality cleanup is selected. If the model runtime is unavailable in a browser, Video Light automatically falls back to the deterministic cleanup path instead of failing the whole export.
 
 #### Video bitrate
 
@@ -53,7 +54,7 @@ The default is **12 Mbps**, which is the recommended balance for typical 720p/10
 - **12 Mbps** — balanced default.
 - **18 Mbps** — larger output with less additional compression.
 
-Bitrate affects only the newly encoded video quality and file size. It does **not** change watermark detection, watermark position, or removal strength.
+Bitrate affects only the newly encoded video quality and file size. It does **not** improve watermark removal.
 
 [**Open Video Light →**](https://bl0ck154.github.io/gemini-watermark-remover-light/video.html)
 
@@ -77,7 +78,7 @@ The userscript remains image-focused; Video Light lives on the web tool where fu
 
 - **Private by design** — user media is processed locally.
 - **Deterministic core** — supported visible marks use calibrated reverse-alpha removal rather than generative fill.
-- **Small default surface** — the image tool and userscript stay compact; Video Light avoids ffmpeg.wasm and bundled ML.
+- **Small default surface** — the image tool and userscript stay compact; Video Light avoids ffmpeg.wasm and downloads the optional denoise model only when needed.
 - **Fail-closed behavior** — uncertain image/video detection is preferred over editing the wrong region.
 - **Open source** — the project is published under the MIT License.
 
@@ -101,6 +102,8 @@ Release notes and technical changes are kept in the [changelog](./CHANGELOG.md).
 ## Credits
 
 Based on the reverse-alpha approach and calibration work from [GargantuaX/gemini-watermark-remover](https://github.com/GargantuaX/gemini-watermark-remover), with video behavior informed by the public work in [allenk/VeoWatermarkRemover](https://github.com/allenk/VeoWatermarkRemover).
+
+The on-demand FDnCNN cleanup path uses the public browser model exported by the upstream project from the allenk FDnCNN work; the model URL is pinned to a specific upstream commit for reproducibility.
 
 This is an independent open-source project and is not affiliated with Google. Gemini and related names are trademarks of their respective owners.
 
