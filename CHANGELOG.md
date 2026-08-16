@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Added experimental **Video Light** as a separate GitHub Pages tool for local MP4 processing.
+- Added multi-frame Gemini/Veo diamond detection for common 1080p and 720p layouts, with conservative low-confidence fail/skip behavior.
+- Added frame-by-frame reverse-alpha removal, bounded alpha adjustment, and optional soft residual cleanup for compression ringing.
+- Added browser-native H.264/WebCodecs export through Mediabunny and source-audio packet copy when the codec is MP4-compatible.
+- Added Video Light regression coverage, syntax checks, site navigation, and sitemap discovery.
+- Video Light v1 intentionally avoids a backend, ffmpeg.wasm, and bundled ML models; enhanced WebGPU/WASM denoise remains a future optional mode.
+
 - Replaced the redundant `Original format` web option with an explicit WebP output, so JPEG, PNG, and WebP are now three distinct download choices.
 - Added regression coverage preventing the duplicate output option from returning.
 - Updated the web profile badge to v0.3.0.
