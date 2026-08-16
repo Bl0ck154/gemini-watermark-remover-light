@@ -32,17 +32,18 @@ Video Light is a separate browser-only MP4 tool for supported visible Gemini/Veo
 
 Current pipeline:
 
-1. Read the local MP4 with Mediabunny.
-2. Sample 12 frames and score known watermark layouts.
-3. If the known layouts are weak or ambiguous, search the bottom-right area for relocated and smaller diamond variants.
-4. Process frames locally with reverse alpha blending and optional soft residual cleanup.
-5. Rebuild the MP4 through Mediabunny's Conversion API and native WebCodecs H.264, preserving source frame timing and keeping the primary audio track when conversion supports it.
+1. Read the local MP4 with Mediabunny and show the selected clip directly inside the upload workspace.
+2. Sample roughly **3 detection frames per second**, bounded to **18–60 samples**. A 10-second clip therefore uses 30 detection samples. These samples only lock/calibrate the watermark; export still processes every decoded frame.
+3. Score known layouts and, when needed, search the bottom-right area using multiple representative frames for relocated/smaller diamond variants.
+4. Calibrate the video alpha profile by testing several edge-boost strengths and reverse-alpha gains on sampled frames.
+5. Process every frame with bounded per-frame gain refinement and optional **Enhanced cleanup**, which uses an edge-aware watermark-footprint mask and local repair to reduce the compression halo.
+6. Rebuild the MP4 through Mediabunny's Conversion API and native WebCodecs H.264, preserving source timing and keeping the primary audio track when conversion supports it.
 
 Current scope is deliberately conservative: low-confidence or ambiguous clips stop instead of blindly modifying the wrong region.
 
 **The video file is not uploaded.** The page loads the pinned Mediabunny browser module from jsDelivr; video processing itself stays on-device. Current Chrome/Edge are the primary browser target because Video Light needs H.264 WebCodecs support.
 
-Video Light intentionally does **not** bundle ffmpeg.wasm or a neural denoise model. A later optional enhanced mode can add WebGPU/WASM FDnCNN cleanup without changing the local-only architecture.
+Video Light intentionally does **not** bundle ffmpeg.wasm or a neural denoise model. The current Enhanced cleanup is Canvas-based and local; an optional WebGPU/WASM FDnCNN mode can still be added later if difficult compressed clips need stronger cleanup.
 
 #### Video bitrate
 
