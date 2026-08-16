@@ -35,16 +35,20 @@ Current pipeline:
 1. Read the local MP4 with Mediabunny and show the selected clip directly inside the upload workspace.
 2. Sample roughly **3 detection frames per second**, bounded to **18–60 samples**. These samples only locate and calibrate the watermark; export still processes every decoded frame.
 3. Score known layouts and, when needed, search the bottom-right area using multiple representative frames for relocated or smaller diamond variants.
-4. Calibrate the video alpha profile by testing several edge strengths and reverse-alpha gains on sampled frames.
-5. Process every frame with reverse-alpha removal plus deterministic footprint repair.
-6. In the default **High-quality cleanup** mode, run a small local FDnCNN denoiser over only the watermark region to reduce compression halo. WebGPU is preferred when available; WASM is the fallback.
-7. Rebuild the MP4 through Mediabunny's Conversion API and native WebCodecs H.264, preserving source timing and keeping the primary audio track when conversion supports it.
+4. Apply an Allenk-inspired startup refinement around the detected anchor: a local **±4 px** search tightens the position instead of trusting the catalog coordinate exactly.
+5. Compare the available calibrated `48`, `96`, and current `96-20260520` alpha profiles and keep an alternative only when it consistently improves the local restoration residual.
+6. Build a stable per-shot alpha seed, then use **five feedback rounds** on strong frames to match the restored watermark area to its local background. Per-frame gain is capped to **±0.05** around the shot consensus to avoid flicker or dark-hole over-removal.
+7. Weak-but-plausible watermark frames use the shot consensus instead of being skipped. Only frames with very little watermark evidence are left untouched.
+8. Apply reverse-alpha removal plus deterministic footprint repair. In the default **High-quality cleanup** mode, a small local FDnCNN denoiser then targets the remaining compression halo; WebGPU is preferred and WASM is the fallback.
+9. Rebuild the MP4 through Mediabunny's Conversion API and native WebCodecs H.264, preserving source timing and keeping the primary audio track when conversion supports it.
 
 Current scope is deliberately conservative: low-confidence or ambiguous clips stop instead of blindly modifying the wrong region.
 
 **The video file is not uploaded.** The page loads pinned browser dependencies and the cleanup model on demand; inference and video processing stay on-device. Current Chrome/Edge are the primary browser target because Video Light needs H.264 WebCodecs support.
 
 The FDnCNN model is loaded only when High-quality cleanup is selected. If the model runtime is unavailable in a browser, Video Light automatically falls back to the deterministic cleanup path instead of failing the whole export.
+
+The public `allenk/VeoWatermarkRemover` repository currently exposes the release/demo documentation rather than the native implementation and remastered mask assets themselves. Video Light therefore ports the documented position/gain behavior and uses the calibrated alpha maps available in the browser upstream instead of claiming to embed Allenk's private/native masks exactly.
 
 #### Video bitrate
 
