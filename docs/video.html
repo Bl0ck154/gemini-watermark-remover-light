@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#edf2f0">
+  <meta name="description" content="Remove visible Gemini/Veo diamond watermarks from supported videos locally in your browser.">
+  <link rel="canonical" href="https://bl0ck154.github.io/gemini-watermark-remover-light/video.html">
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <title>Video Light · Gemini Watermark Remover Light</title>
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./video.css">
+  <script type="module" src="./video.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="./" aria-label="Gemini Watermark Remover Light home">
+      <span class="wordmark-mark" aria-hidden="true">✦</span>
+      <span>Gemini Watermark Remover <em>Light</em></span>
+    </a>
+    <nav aria-label="Primary navigation">
+      <a href="./">Image</a>
+      <a aria-current="page" href="./video.html">Video</a>
+      <a href="https://github.com/Bl0ck154/gemini-watermark-remover-light">Source</a>
+    </nav>
+  </header>
+
+  <main class="video-main">
+    <section class="video-hero">
+      <p class="section-kicker">Video Light · experimental</p>
+      <h1>Clean supported Gemini/Veo videos locally.</h1>
+      <p>Nothing is uploaded. Video Light decodes the MP4 in your browser, removes the visible diamond frame by frame, and rebuilds an MP4 with the original audio track when possible.</p>
+      <div class="video-badges" aria-label="Video Light capabilities">
+        <span>Local-only</span><span>WebCodecs</span><span>No server</span><span>No ffmpeg.wasm</span>
+      </div>
+    </section>
+
+    <section class="video-workbench" aria-labelledby="video-tool-title">
+      <div class="video-tool-heading">
+        <div><p class="section-kicker">Browser tool</p><h2 id="video-tool-title">Video watermark remover</h2></div>
+        <p class="video-support">Current v1 target: Gemini/Veo diamond watermark on common 1080p and 720p outputs.</p>
+      </div>
+
+      <div class="video-dropzone" id="video-dropzone">
+        <input id="video-file-input" type="file" accept="video/mp4" hidden>
+        <button id="video-choose" class="video-choose" type="button">
+          <span class="drop-symbol" aria-hidden="true"><span></span></span>
+          <span><strong>Drop an MP4 here</strong><small>or click to choose a video</small></span>
+          <em>MP4</em>
+        </button>
+      </div>
+
+      <div class="video-file-card" id="video-file-card" hidden>
+        <div><strong id="video-file-name"></strong><small id="video-file-meta"></small></div>
+        <button id="video-replace" class="secondary-button" type="button">Choose another</button>
+      </div>
+
+      <div class="video-options" id="video-options" hidden>
+        <label>
+          <span><strong>Residual cleanup</strong><small>Softens compression residue around the diamond after reverse-alpha removal.</small></span>
+          <select id="video-cleanup">
+            <option value="soft" selected>Soft · recommended</option>
+            <option value="off">Off · pure reverse alpha</option>
+          </select>
+        </label>
+        <label>
+          <span><strong>Video bitrate</strong><small>Higher values preserve more detail but create a larger output.</small></span>
+          <select id="video-bitrate">
+            <option value="8000000">8 Mbps</option>
+            <option value="12000000" selected>12 Mbps</option>
+            <option value="18000000">18 Mbps</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="video-actions" id="video-actions" hidden>
+        <button class="primary-button" id="video-process" type="button">Process video <span aria-hidden="true">→</span></button>
+      </div>
+
+      <div class="video-progress" id="video-progress" hidden role="status" aria-live="polite">
+        <div class="video-progress-head"><strong id="video-progress-label">Preparing…</strong><span id="video-progress-percent">0%</span></div>
+        <div class="video-progress-track"><span id="video-progress-bar"></span></div>
+        <small id="video-progress-detail">Reading video metadata.</small>
+      </div>
+
+      <div class="video-error" id="video-error" hidden role="alert">
+        <strong id="video-error-title">Could not process this video</strong>
+        <p id="video-error-message"></p>
+      </div>
+
+      <div class="video-result" id="video-result" hidden>
+        <div class="video-result-grid">
+          <figure><figcaption>Original</figcaption><video id="video-before" controls playsinline></video></figure>
+          <figure><figcaption>Cleaned</figcaption><video id="video-after" controls playsinline></video></figure>
+        </div>
+        <div class="video-result-meta"><span class="success-dot" aria-hidden="true"></span><p><strong>Video processed</strong><small id="video-result-details"></small></p></div>
+        <div class="video-result-actions">
+          <button class="secondary-button" id="video-new" type="button">Choose another</button>
+          <button class="primary-button" id="video-download" type="button">Download MP4 <span aria-hidden="true">↓</span></button>
+        </div>
+      </div>
+
+      <p class="privacy-note">Your video stays on this device. Video processing requires a browser with WebCodecs H.264 support; current Chrome/Edge are the safest choice.</p>
+    </section>
+
+    <section class="video-notes">
+      <div><p class="section-kicker">What v1 does</p><h2>Lightweight first. Quality-aware.</h2></div>
+      <div class="video-note-grid">
+        <article><strong>Multi-frame detection</strong><p>Samples frames across the clip instead of trusting frame zero, so fades and busy scenes are less likely to fool detection.</p></article>
+        <article><strong>Stable geometry</strong><p>Locks one watermark position for the clip and applies confidence checks per frame to reduce flicker and accidental damage.</p></article>
+        <article><strong>Soft residual cleanup</strong><p>A small local edge cleanup reduces H.264 ringing without shipping a neural model in the first release.</p></article>
+        <article><strong>Known limit</strong><p>Some heavily compressed or unusual clips can still leave a faint residual. Enhanced WebGPU/WASM cleanup is planned separately.</p></article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wordmark"><span class="wordmark-mark" aria-hidden="true">✦</span><span>Gemini Watermark Remover <em>Light</em></span></div>
+    <p>Open source · MIT License · Not affiliated with Google</p>
+    <div><a href="./">Image tool</a><a href="https://github.com/Bl0ck154/gemini-watermark-remover-light">GitHub</a></div>
+  </footer>
+</body>
+</html>
