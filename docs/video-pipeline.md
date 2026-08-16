@@ -1,0 +1,1 @@
+Video Light v1 pipeline: MP4 -> Mediabunny demux -> sampled-frame diamond detection -> frame decode -> reverse alpha removal -> optional soft residual cleanup -> WebCodecs H.264 encode -> MP4 mux with compatible source audio. Local only; no backend.
