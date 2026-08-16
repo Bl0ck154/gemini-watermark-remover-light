@@ -3,11 +3,15 @@
 ## Unreleased
 
 - Added experimental **Video Light** as a separate GitHub Pages tool for local MP4 processing.
-- Added multi-frame Gemini/Veo diamond detection for common 1080p and 720p layouts, with conservative low-confidence fail/skip behavior.
+- Added 12-frame Gemini/Veo diamond detection for common 1080p and 720p layouts, with conservative low-confidence fail/skip behavior.
+- Added bottom-right smart search for relocated and smaller diamond variants instead of trusting only a few hard-coded positions.
+- Raised the detection gate and added ambiguity rejection so weak matches stop instead of modifying the wrong region.
 - Added frame-by-frame reverse-alpha removal, bounded alpha adjustment, and optional soft residual cleanup for compression ringing.
-- Added browser-native H.264/WebCodecs export through Mediabunny and source-audio packet copy when the codec is MP4-compatible.
+- Replaced the first manual video mux/export path with Mediabunny `Conversion`, so source frame timing is preserved by the media pipeline and the primary audio track is kept when supported.
+- Reworked the Video Light page to match the image tool: the upload field is now at the top instead of below a large hero section.
+- Replaced terse video settings with explained cleanup and 8/12/18 Mbps bitrate choices; 12 Mbps is the recommended default and bitrate is explicitly documented as output compression only.
 - Added Video Light regression coverage, syntax checks, site navigation, and sitemap discovery.
-- Video Light v1 intentionally avoids a backend, ffmpeg.wasm, and bundled ML models; enhanced WebGPU/WASM denoise remains a future optional mode.
+- Video Light intentionally avoids a backend, ffmpeg.wasm, and bundled ML models; enhanced WebGPU/WASM denoise remains a future optional mode.
 
 - Replaced the redundant `Original format` web option with an explicit WebP output, so JPEG, PNG, and WebP are now three distinct download choices.
 - Added regression coverage preventing the duplicate output option from returning.
