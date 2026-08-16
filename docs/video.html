@@ -27,32 +27,29 @@
     </nav>
   </header>
 
-  <main id="top" class="video-main">
+  <main id="top">
     <section class="workbench video-workbench" aria-label="Video watermark remover">
-      <div class="video-workbench-head">
-        <div>
-          <p class="section-kicker">Video Light · experimental</p>
-          <h1>Remove a video watermark</h1>
-        </div>
-        <p>MP4 · local browser processing · no upload</p>
-      </div>
-
       <div class="drop-zone video-dropzone" id="video-dropzone">
         <input id="video-file-input" type="file" accept="video/mp4" hidden>
-        <button id="video-choose" class="drop-idle video-choose" type="button">
+        <button id="video-choose" class="drop-idle" type="button">
           <span class="drop-symbol" aria-hidden="true"><span></span></span>
-          <span class="drop-copy"><strong>Drop an MP4 here</strong><small>or click anywhere in this field to choose one</small></span>
+          <span class="drop-copy"><strong>Drop a video here</strong><small>or click anywhere in this field to choose one</small></span>
           <span class="file-types">MP4</span>
         </button>
       </div>
 
-      <div class="video-file-card" id="video-file-card" hidden>
-        <div><strong id="video-file-name"></strong><small id="video-file-meta"></small></div>
-        <button id="video-replace" class="secondary-button" type="button">Choose another</button>
+      <div class="result-toolbar video-file-card" id="video-file-card" hidden>
+        <div class="result-meta">
+          <span class="success-dot" aria-hidden="true"></span>
+          <p><strong id="video-file-name"></strong><small id="video-file-meta"></small></p>
+        </div>
+        <div class="result-actions">
+          <button id="video-replace" class="secondary-button" type="button">Choose another</button>
+        </div>
       </div>
 
       <div class="video-options" id="video-options" hidden>
-        <fieldset class="format-picker video-choice-group">
+        <fieldset class="format-picker video-choice-group video-cleanup-group">
           <legend>Residual cleanup</legend>
           <label class="format-option">
             <input type="radio" name="video-cleanup" value="soft" checked>
@@ -67,25 +64,25 @@
           </label>
         </fieldset>
 
-        <fieldset class="format-picker video-choice-group">
-          <legend>Output quality · video bitrate</legend>
+        <fieldset class="format-picker video-choice-group video-bitrate-group">
+          <legend>Video bitrate</legend>
           <label class="format-option">
             <input type="radio" name="video-bitrate" value="8000000">
             <span class="radio-mark" aria-hidden="true"></span>
-            <span><strong>8 Mbps</strong><small>Smaller file. More re-encoding compression, especially on detailed 1080p video.</small></span>
+            <span><strong>8 Mbps</strong><small>Smaller file with more re-encoding compression.</small></span>
           </label>
           <label class="format-option">
             <input type="radio" name="video-bitrate" value="12000000" checked>
             <span class="radio-mark" aria-hidden="true"></span>
-            <span><strong>12 Mbps</strong><small>Balanced output size and quality for typical 720p/1080p clips.</small></span>
+            <span><strong>12 Mbps</strong><small>Balanced quality and file size for typical 720p/1080p clips.</small></span>
             <em>Recommended</em>
           </label>
           <label class="format-option">
             <input type="radio" name="video-bitrate" value="18000000">
             <span class="radio-mark" aria-hidden="true"></span>
-            <span><strong>18 Mbps</strong><small>Larger file with less additional compression. It does not improve watermark detection.</small></span>
+            <span><strong>18 Mbps</strong><small>Larger file with less additional compression.</small></span>
           </label>
-          <p class="video-option-note"><strong>Bitrate only controls the newly encoded video quality and file size.</strong> It does not move the watermark region or make removal stronger.</p>
+          <p class="video-option-note"><strong>Bitrate only controls output quality and file size.</strong> It does not affect watermark detection, position, or removal strength.</p>
         </fieldset>
       </div>
 
@@ -109,10 +106,12 @@
           <figure><figcaption>Original</figcaption><video id="video-before" controls playsinline preload="metadata"></video></figure>
           <figure><figcaption>Cleaned</figcaption><video id="video-after" controls playsinline preload="metadata"></video></figure>
         </div>
-        <div class="video-result-meta"><span class="success-dot" aria-hidden="true"></span><p><strong>Video processed</strong><small id="video-result-details"></small></p></div>
-        <div class="video-result-actions">
-          <button class="secondary-button" id="video-new" type="button">Choose another</button>
-          <button class="primary-button" id="video-download" type="button">Download MP4 <span aria-hidden="true">↓</span></button>
+        <div class="result-toolbar video-result-toolbar">
+          <div class="result-meta"><span class="success-dot" aria-hidden="true"></span><p><strong>Video processed</strong><small id="video-result-details"></small></p></div>
+          <div class="result-actions">
+            <button class="secondary-button" id="video-new" type="button">Choose another</button>
+            <button class="primary-button" id="video-download" type="button">Download MP4 <span aria-hidden="true">↓</span></button>
+          </div>
         </div>
       </div>
 
