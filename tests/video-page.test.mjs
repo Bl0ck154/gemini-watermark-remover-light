@@ -6,20 +6,34 @@ const html = fs.readFileSync(new URL('../docs/video.html', import.meta.url), 'ut
 const js = fs.readFileSync(new URL('../docs/video.js', import.meta.url), 'utf8');
 const css = fs.readFileSync(new URL('../docs/video.css', import.meta.url), 'utf8');
 
-test('Video Light puts the upload workbench first like the image tool', () => {
+test('Video Light mirrors the image tool upload layout', () => {
   assert.match(html, /class="workbench video-workbench"/);
-  assert.match(html, /id="video-dropzone"/);
-  assert.doesNotMatch(html, /class="video-hero"/);
-  assert.match(css, /\.video-workbench-head/);
+  assert.match(html, /class="drop-zone video-dropzone"/);
+  assert.match(html, /class="drop-idle"/);
+  assert.match(html, /Drop a video here/);
+  assert.match(html, /class="file-types">MP4/);
+  assert.doesNotMatch(html, /Remove a video watermark/);
+  assert.doesNotMatch(html, /video-workbench-head/);
+  assert.doesNotMatch(css, /\.video-main\s*\{/);
 });
 
-test('Video Light explains cleanup and bitrate without implying they affect detection', () => {
+test('Selected video and result actions reuse the image result toolbar pattern', () => {
+  assert.match(html, /class="result-toolbar video-file-card"/);
+  assert.match(html, /class="result-toolbar video-result-toolbar"/);
+  assert.match(html, /id="video-replace"[^>]*>Choose another/);
+  assert.match(html, /id="video-new"[^>]*>Choose another/);
+});
+
+test('Video settings are stacked and use the image option-card pattern', () => {
+  assert.match(html, /class="format-picker video-choice-group video-cleanup-group"/);
+  assert.match(html, /class="format-picker video-choice-group video-bitrate-group"/);
+  assert.match(css, /\.video-options\{display:flex;flex-direction:column/);
   assert.match(html, /Soft cleanup/);
   assert.match(html, /Pure reverse-alpha removal/);
   assert.match(html, /12 Mbps/);
   assert.match(html, /Recommended/);
-  assert.match(html, /Bitrate only controls the newly encoded video quality and file size/);
-  assert.match(html, /does not move the watermark region or make removal stronger/);
+  assert.match(html, /Bitrate only controls output quality and file size/);
+  assert.match(html, /does not affect watermark detection, position, or removal strength/);
 });
 
 test('Video Light uses local Mediabunny Conversion for timing-safe MP4 rebuilds', () => {
@@ -45,7 +59,7 @@ test('Video Light searches beyond a few hard-coded watermark positions', () => {
   assert.match(js, /watermark position is ambiguous/);
 });
 
-test('Video Light keeps a real responsive result workbench', () => {
+test('Video Light keeps a responsive result workbench', () => {
   assert.match(html, /id="video-process"/);
   assert.match(html, /id="video-progress"/);
   assert.match(html, /id="video-result"/);
