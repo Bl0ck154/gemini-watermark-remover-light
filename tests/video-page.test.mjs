@@ -5,6 +5,7 @@ import test from 'node:test';
 const html = fs.readFileSync(new URL('../docs/video.html', import.meta.url), 'utf8');
 const js = fs.readFileSync(new URL('../docs/video.js', import.meta.url), 'utf8');
 const bootstrap = fs.readFileSync(new URL('../docs/video-bootstrap.js', import.meta.url), 'utf8');
+const refinement = fs.readFileSync(new URL('../docs/video-allenk-refinement.js', import.meta.url), 'utf8');
 const css = fs.readFileSync(new URL('../docs/video.css', import.meta.url), 'utf8');
 
 test('Video Light mirrors the image tool upload layout', () => {
@@ -65,8 +66,31 @@ test('Video Light calibrates edge-boosted alpha and performs deterministic footp
   assert.match(js, /cleanup === 'enhanced'/);
 });
 
+test('Allenk-style refinement adds position snap, shot consensus, and five-round feedback', () => {
+  assert.match(html, /video-allenk-refinement\.js/);
+  assert.match(refinement, /POSITION_REFINE_RADIUS = 4/);
+  assert.match(refinement, /SHOT_SEED_FRAME_LIMIT = 12/);
+  assert.match(refinement, /ALPHA_REFINEMENT_ROUNDS = 5/);
+  assert.match(refinement, /FRAME_HIGH_CONFIDENCE = 0\.14/);
+  assert.match(refinement, /FRAME_LOW_CONFIDENCE = 0\.035/);
+  assert.match(refinement, /FRAME_GAIN_STEP_CAP = 0\.05/);
+  assert.match(refinement, /function refinePosition/);
+  assert.match(refinement, /function estimateFrameGain/);
+  assert.match(refinement, /low-confidence-shot-consensus/);
+  assert.match(refinement, /background-normalized-evidence/);
+});
+
+test('Refinement can select between calibrated current and legacy video alpha profiles', () => {
+  assert.match(refinement, /96-20260520/);
+  assert.match(refinement, /profile: '96'/);
+  assert.match(refinement, /profile: '48'/);
+  assert.match(refinement, /ALPHA_SHAPE_SAMPLE_LIMIT = 8/);
+  assert.match(refinement, /relativeImprovement >= 0\.08/);
+  assert.match(refinement, /applyReverseAlpha/);
+});
+
 test('High-quality cleanup adds local FDnCNN with WebGPU and WASM fallback', () => {
-  assert.match(html, /video-bootstrap\.js/);
+  assert.match(refinement, /await import\('\.\/video-bootstrap\.js'\)/);
   assert.match(bootstrap, /onnxruntime-web@\$\{ORT_VERSION\}/);
   assert.match(bootstrap, /model_core_fp32_104\.onnx/);
   assert.match(bootstrap, /model_core_fp32_200\.onnx/);
