@@ -11,8 +11,12 @@ import {
 } from 'https://cdn.jsdelivr.net/npm/mediabunny@1.46.0/+esm';
 import { EMBEDDED_ALPHA_MAPS_U8 } from './maps.js';
 
-const SAMPLE_COUNT = 12;
-const LOW_FRAME_CONFIDENCE = 0.06;
+const DETECTION_SAMPLES_PER_SECOND = 3;
+const MIN_DETECTION_SAMPLES = 18;
+const MAX_DETECTION_SAMPLES = 60;
+const SMART_SEARCH_FRAME_LIMIT = 9;
+const CALIBRATION_FRAME_LIMIT = 12;
+const LOW_FRAME_CONFIDENCE = 0.055;
 const MIN_DETECTION_SCORE = 0.12;
 const MIN_DETECTION_GAP = 0.012;
 const STRONG_KNOWN_SCORE = 0.20;
@@ -22,6 +26,8 @@ const DEFAULT_FRAME_RATE = 30;
 const DEFAULT_VIDEO_BITRATE = 12_000_000;
 const LARGE_VIDEO_ALPHA_PROFILE = '96-20260520';
 const SMALL_VIDEO_ALPHA_PROFILE = '48';
+const DEFAULT_ALPHA_EDGE_BOOST = 0.045;
+const INSET_ALPHA_EDGE_BOOST = 0.035;
 
 const KNOWN_CANDIDATES = Object.freeze({
   '1920x1080': [
@@ -48,21 +54,47 @@ const KNOWN_CANDIDATES = Object.freeze({
 
 const $ = (id) => document.getElementById(id);
 const els = {
-  dropzone: $('video-dropzone'), input: $('video-file-input'), choose: $('video-choose'), fileCard: $('video-file-card'),
-  fileName: $('video-file-name'), fileMeta: $('video-file-meta'), replace: $('video-replace'), options: $('video-options'),
-  actions: $('video-actions'), process: $('video-process'), progress: $('video-progress'), progressLabel: $('video-progress-label'),
-  progressPercent: $('video-progress-percent'), progressBar: $('video-progress-bar'), progressDetail: $('video-progress-detail'),
-  error: $('video-error'), errorTitle: $('video-error-title'), errorMessage: $('video-error-message'), result: $('video-result'),
-  before: $('video-before'), after: $('video-after'), resultDetails: $('video-result-details'), newFile: $('video-new'),
+  dropzone: $('video-dropzone'),
+  input: $('video-file-input'),
+  choose: $('video-choose'),
+  selectedState: $('video-selected-state'),
+  selectedPreview: $('video-selected-preview'),
+  remove: $('video-remove'),
+  fileName: $('video-file-name'),
+  fileMeta: $('video-file-meta'),
+  replace: $('video-replace'),
+  options: $('video-options'),
+  actions: $('video-actions'),
+  process: $('video-process'),
+  progress: $('video-progress'),
+  progressLabel: $('video-progress-label'),
+  progressPercent: $('video-progress-percent'),
+  progressBar: $('video-progress-bar'),
+  progressDetail: $('video-progress-detail'),
+  error: $('video-error'),
+  errorTitle: $('video-error-title'),
+  errorMessage: $('video-error-message'),
+  errorRetry: $('video-error-retry'),
+  result: $('video-result'),
+  resultPreview: $('video-result-preview'),
+  showOriginal: $('video-show-original'),
+  showCleaned: $('video-show-cleaned'),
+  resultDetails: $('video-result-details'),
+  newFile: $('video-new'),
   download: $('video-download')
 };
 
 let currentFile = null;
 let currentMetadata = null;
-let currentBeforeUrl = null;
-let currentAfterUrl = null;
+let currentInputUrl = null;
+let currentOutputUrl = null;
 let currentBlob = null;
+let currentResultMode = 'cleaned';
 let dragDepth = 0;
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
 
 function selectedRadio(name, fallback) {
   return document.querySelector(`input[name="${name}"]:checked`)?.value ?? fallback;
@@ -73,7 +105,7 @@ function selectedBitrate() {
 }
 
 function selectedCleanup() {
-  return selectedRadio('video-cleanup', 'soft');
+  return selectedRadio('video-cleanup', 'enhanced');
 }
 
 function bytesLabel(bytes) {
@@ -100,41 +132,76 @@ function average(values) {
   return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
 }
 
+function detectionSampleCount(duration) {
+  if (!Number.isFinite(duration) || duration <= 0) return 24;
+  return clamp(Math.round(duration * DETECTION_SAMPLES_PER_SECOND), MIN_DETECTION_SAMPLES, MAX_DETECTION_SAMPLES);
+}
+
+function representativeFrames(frames, limit) {
+  if (frames.length <= limit) return frames;
+  if (limit <= 1) return [frames[Math.floor(frames.length / 2)]];
+  return Array.from({ length: limit }, (_, index) => {
+    const frameIndex = Math.round(index * (frames.length - 1) / (limit - 1));
+    return frames[frameIndex];
+  });
+}
+
 function setProgress(progress, label, detail = '') {
-  const safe = Math.max(0, Math.min(1, Number(progress) || 0));
+  const safe = clamp(Number(progress) || 0, 0, 1);
   const pct = Math.round(safe * 100);
-  els.progress.hidden = false;
   els.progressBar.style.width = `${pct}%`;
   els.progressPercent.textContent = `${pct}%`;
   els.progressLabel.textContent = label;
   els.progressDetail.textContent = detail;
 }
 
-function clearUrls() {
-  for (const video of [els.before, els.after]) {
-    if (!video) continue;
-    video.pause();
-    video.removeAttribute('src');
-    video.load();
-  }
-  if (currentBeforeUrl) URL.revokeObjectURL(currentBeforeUrl);
-  if (currentAfterUrl) URL.revokeObjectURL(currentAfterUrl);
-  currentBeforeUrl = null;
-  currentAfterUrl = null;
+function pauseAndClear(video) {
+  if (!video) return;
+  video.pause();
+  video.removeAttribute('src');
+  video.load();
+}
+
+function clearOutput() {
+  pauseAndClear(els.resultPreview);
+  if (currentOutputUrl) URL.revokeObjectURL(currentOutputUrl);
+  currentOutputUrl = null;
   currentBlob = null;
 }
 
-function resetForFile() {
-  clearUrls();
-  els.result.hidden = true;
-  els.error.hidden = true;
-  els.progress.hidden = true;
-  els.process.disabled = false;
+function clearInputPreview() {
+  pauseAndClear(els.selectedPreview);
+  if (currentInputUrl) URL.revokeObjectURL(currentInputUrl);
+  currentInputUrl = null;
+}
+
+function clearUrls() {
+  clearOutput();
+  clearInputPreview();
+}
+
+function showDropState(state) {
+  els.choose.hidden = state !== 'idle';
+  els.selectedState.hidden = state !== 'selected';
+  els.progress.hidden = state !== 'processing';
+  els.result.hidden = state !== 'result';
+  els.error.hidden = state !== 'error';
 }
 
 function pickFile() {
   els.input.value = '';
   els.input.click();
+}
+
+function removeSelection() {
+  currentFile = null;
+  currentMetadata = null;
+  clearUrls();
+  els.options.hidden = true;
+  els.actions.hidden = true;
+  els.process.disabled = false;
+  els.input.value = '';
+  showDropState('idle');
 }
 
 function createRuntimeCanvas(width, height) {
@@ -173,7 +240,7 @@ async function getMetadata(file) {
       track.getFirstTimestamp().catch(() => 0),
       input.getDurationFromMetadata([track], { skipLiveWait: true }).catch(() => null),
       track.computePacketStats(90, { skipLiveWait: true }).catch(() => null),
-      audioTrack?.getCodec().catch(() => null) ?? null
+      audioTrack ? audioTrack.getCodec().catch(() => null) : null
     ]);
     const duration = Number.isFinite(durationFromMetadata) && durationFromMetadata > 0
       ? durationFromMetadata
@@ -247,22 +314,68 @@ function resizeAlphaMapArea(source, sourceSize, targetSize) {
   return out;
 }
 
-function getAlphaMap(size) {
+function enhanceVideoAlphaEdges(alphaMap, size, strength) {
+  if (!Number.isFinite(strength) || strength <= 0 || size <= 2) return new Float32Array(alphaMap);
+  const gradient = new Float32Array(alphaMap.length);
+  let maxGradient = 0;
+  for (let y = 1; y < size - 1; y++) {
+    for (let x = 1; x < size - 1; x++) {
+      const i = y * size + x;
+      const gx =
+        -alphaMap[i - size - 1] - 2 * alphaMap[i - 1] - alphaMap[i + size - 1] +
+        alphaMap[i - size + 1] + 2 * alphaMap[i + 1] + alphaMap[i + size + 1];
+      const gy =
+        -alphaMap[i - size - 1] - 2 * alphaMap[i - size] - alphaMap[i - size + 1] +
+        alphaMap[i + size - 1] + 2 * alphaMap[i + size] + alphaMap[i + size + 1];
+      const value = Math.sqrt(gx * gx + gy * gy);
+      gradient[i] = value;
+      if (value > maxGradient) maxGradient = value;
+    }
+  }
+  if (maxGradient <= 0) return new Float32Array(alphaMap);
+  const out = new Float32Array(alphaMap.length);
+  for (let i = 0; i < alphaMap.length; i++) {
+    const edge = Math.sqrt(gradient[i] / maxGradient);
+    out[i] = Math.min(0.99, alphaMap[i] + edge * strength);
+  }
+  return out;
+}
+
+function getAlphaMap(size, edgeBoost = DEFAULT_ALPHA_EDGE_BOOST) {
   const profile = size < 40 ? SMALL_VIDEO_ALPHA_PROFILE : LARGE_VIDEO_ALPHA_PROFILE;
-  const cacheKey = `${profile}:${size}`;
+  const cacheKey = `${profile}:${size}:${edgeBoost.toFixed(3)}`;
   if (resizedMaps.has(cacheKey)) return resizedMaps.get(cacheKey);
   const source = getAlphaSource(profile) || getAlphaSource('96') || getAlphaSource('48');
   if (!source) throw new Error('Video alpha calibration maps are missing.');
   const resized = resizeAlphaMapArea(source.values, source.size, size);
-  resizedMaps.set(cacheKey, resized);
-  return resized;
+  const enhanced = enhanceVideoAlphaEdges(resized, size, edgeBoost);
+  resizedMaps.set(cacheKey, enhanced);
+  return enhanced;
 }
 
-function buildCandidate({ id, size, marginRight, marginBottom, source = 'known' }, width, height) {
+function edgeBoostForGeometry(size, marginRight, marginBottom) {
+  const inset = Number.isFinite(size) && size > 0 && (
+    marginRight / size >= 1.85 || marginBottom / size >= 1.85
+  );
+  return inset ? INSET_ALPHA_EDGE_BOOST : DEFAULT_ALPHA_EDGE_BOOST;
+}
+
+function buildCandidate({ id, size, marginRight, marginBottom, source = 'known', edgeBoost = null }, width, height) {
   const x = width - marginRight - size;
   const y = height - marginBottom - size;
   if (x < 0 || y < 0 || x + size > width || y + size > height) return null;
-  return { id, x, y, size, marginRight, marginBottom, source, alphaMap: getAlphaMap(size) };
+  const resolvedBoost = Number.isFinite(edgeBoost) ? edgeBoost : edgeBoostForGeometry(size, marginRight, marginBottom);
+  return {
+    id,
+    x,
+    y,
+    size,
+    marginRight,
+    marginBottom,
+    source,
+    edgeBoost: resolvedBoost,
+    alphaMap: getAlphaMap(size, resolvedBoost)
+  };
 }
 
 function knownCandidatesFor(width, height) {
@@ -365,7 +478,7 @@ function estimateGain(frame, candidate) {
   }
   if (!activeWeight || !quietWeight) return 1;
   const contrast = activeLuma / activeWeight - quietLuma / quietWeight;
-  return Math.max(0.72, Math.min(1.22, 0.88 + contrast * 2.4));
+  return clamp(0.88 + contrast * 2.4, 0.68, 1.34);
 }
 
 function summarizeCandidate(frames, candidate, pixelStep = 1) {
@@ -375,9 +488,7 @@ function summarizeCandidate(frames, candidate, pixelStep = 1) {
   const usefulScores = sortedScores.slice(0, Math.max(3, Math.ceil(sortedScores.length * 0.70)));
   const score = average(usefulScores) * 0.72 + (median(scores) || 0) * 0.28;
   const votes = scores.filter((value) => value >= LOW_FRAME_CONFIDENCE).length;
-  const gains = frames
-    .map((frame, index) => scores[index] >= LOW_FRAME_CONFIDENCE ? estimateGain(frame, candidate) : null)
-    .filter(Number.isFinite);
+  const gains = frames.map((frame) => estimateGain(frame, candidate)).filter(Number.isFinite);
   return { ...candidate, score, votes, sampledFrames: scores.length, seedGain: median(gains) || 1 };
 }
 
@@ -385,8 +496,11 @@ async function sampleDetectionFrames(file, metadata) {
   const { input, track } = await openInput(file);
   const duration = Number(metadata.duration) || 0;
   const firstTimestamp = Number(metadata.firstTimestamp) || 0;
-  const interval = duration > 0 ? duration / (SAMPLE_COUNT + 1) : 0;
-  const targets = Array.from({ length: SAMPLE_COUNT }, (_, index) => firstTimestamp + interval * (index + 1));
+  const sampleCount = detectionSampleCount(duration);
+  const targets = Array.from({ length: sampleCount }, (_, index) => {
+    if (duration > 0) return firstTimestamp + duration * ((index + 0.5) / sampleCount);
+    return firstTimestamp + index / DETECTION_SAMPLES_PER_SECOND;
+  });
   const frames = [];
   try {
     const sink = new CanvasSink(track);
@@ -398,14 +512,14 @@ async function sampleDetectionFrames(file, metadata) {
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
       if (!ctx) continue;
       frames.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
-      setProgress(0.03 + 0.09 * index / SAMPLE_COUNT, 'Sampling video', `Detection frame ${index}/${SAMPLE_COUNT}`);
-      await yieldToBrowser();
+      setProgress(0.02 + 0.10 * index / sampleCount, 'Sampling video', `Detection frame ${index}/${sampleCount}`);
+      if (index % 3 === 0) await yieldToBrowser();
     }
   } finally {
     input.dispose();
   }
-  if (frames.length < 3) throw new Error('Could not decode enough frames to detect the watermark safely.');
-  return frames;
+  if (frames.length < Math.min(6, sampleCount)) throw new Error('Could not decode enough frames to detect the watermark safely.');
+  return { frames, sampleCount };
 }
 
 function searchSizes(width, height) {
@@ -433,9 +547,7 @@ function dedupeCandidates(candidates) {
 }
 
 async function smartSearchCandidates(frames, metadata) {
-  const selectedFrames = frames.length <= 3
-    ? frames
-    : [frames[1], frames[Math.floor(frames.length / 2)], frames[frames.length - 2]];
+  const selectedFrames = representativeFrames(frames, SMART_SEARCH_FRAME_LIMIT);
   const sizes = searchSizes(metadata.width, metadata.height);
   const maxRight = Math.min(360, Math.max(80, Math.round(metadata.width * 0.28)));
   const maxBottom = Math.min(360, Math.max(80, Math.round(metadata.height * 0.28)));
@@ -443,7 +555,7 @@ async function smartSearchCandidates(frames, metadata) {
 
   for (let sizeIndex = 0; sizeIndex < sizes.length; sizeIndex++) {
     const size = sizes[sizeIndex];
-    const alphaMap = getAlphaMap(size);
+    const alphaMap = getAlphaMap(size, DEFAULT_ALPHA_EDGE_BOOST);
     const coarseStep = size <= 24 ? 4 : size <= 48 ? 6 : 8;
     const pixelStep = size <= 24 ? 1 : size <= 48 ? 2 : 3;
     for (let marginBottom = 8; marginBottom <= maxBottom; marginBottom += coarseStep) {
@@ -452,12 +564,22 @@ async function smartSearchCandidates(frames, metadata) {
       for (let marginRight = 8; marginRight <= maxRight; marginRight += coarseStep) {
         const x = metadata.width - marginRight - size;
         if (x < 0) continue;
-        const candidate = { id: `smart-${size}`, x, y, size, marginRight, marginBottom, source: 'smart', alphaMap };
+        const candidate = {
+          id: `smart-${size}`,
+          x,
+          y,
+          size,
+          marginRight,
+          marginBottom,
+          source: 'smart',
+          edgeBoost: DEFAULT_ALPHA_EDGE_BOOST,
+          alphaMap
+        };
         const score = average(selectedFrames.map((frame) => scoreCandidate(frame, candidate, pixelStep)));
-        if (Number.isFinite(score)) insertTop(coarseTop, { ...candidate, score, coarseStep }, 10);
+        if (Number.isFinite(score)) insertTop(coarseTop, { ...candidate, score, coarseStep }, 12);
       }
     }
-    setProgress(0.13 + 0.10 * (sizeIndex + 1) / sizes.length, 'Searching watermark area', `Scanning ${size}px candidates near the bottom-right corner`);
+    setProgress(0.13 + 0.09 * (sizeIndex + 1) / sizes.length, 'Searching watermark area', `Scanning ${size}px candidates across ${selectedFrames.length} representative frames`);
     await yieldToBrowser();
   }
 
@@ -466,18 +588,22 @@ async function smartSearchCandidates(frames, metadata) {
     const radius = coarse.coarseStep;
     for (let y = Math.max(0, coarse.y - radius); y <= Math.min(metadata.height - coarse.size, coarse.y + radius); y++) {
       for (let x = Math.max(0, coarse.x - radius); x <= Math.min(metadata.width - coarse.size, coarse.x + radius); x++) {
+        const marginRight = metadata.width - x - coarse.size;
+        const marginBottom = metadata.height - y - coarse.size;
+        const edgeBoost = edgeBoostForGeometry(coarse.size, marginRight, marginBottom);
         const candidate = {
           id: `smart-${coarse.size}-${x}-${y}`,
           x,
           y,
           size: coarse.size,
-          marginRight: metadata.width - x - coarse.size,
-          marginBottom: metadata.height - y - coarse.size,
+          marginRight,
+          marginBottom,
           source: 'smart',
-          alphaMap: coarse.alphaMap
+          edgeBoost,
+          alphaMap: getAlphaMap(coarse.size, edgeBoost)
         };
         const score = average(selectedFrames.map((frame) => scoreCandidate(frame, candidate, coarse.size <= 24 ? 1 : 2)));
-        if (Number.isFinite(score)) insertTop(refinedTop, { ...candidate, score }, 8);
+        if (Number.isFinite(score)) insertTop(refinedTop, { ...candidate, score }, 10);
       }
     }
     await yieldToBrowser();
@@ -485,8 +611,128 @@ async function smartSearchCandidates(frames, metadata) {
   return dedupeCandidates(refinedTop);
 }
 
+function restoredLumaAndClip(data, index, alpha) {
+  const remainder = Math.max(0.01, 1 - alpha);
+  let clipped = 0;
+  const channels = [0, 1, 2].map((channel) => {
+    const raw = (data[index + channel] - 255 * alpha) / remainder;
+    if (raw < 0 || raw > 255) clipped += 1;
+    return clamp(raw, 0, 255);
+  });
+  return {
+    luma: (0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]) / 255,
+    clipped
+  };
+}
+
+function residualScoreForGain(frame, candidate, gain, alphaMap = candidate.alphaMap) {
+  const { x, y, size } = candidate;
+  let alphaMean = 0;
+  let lumaMean = 0;
+  let count = 0;
+  let clipped = 0;
+  for (let py = 0; py < size; py++) {
+    for (let px = 0; px < size; px++) {
+      const rawAlpha = alphaMap[py * size + px];
+      const alpha = rawAlpha > 0.015 ? Math.min(0.99, rawAlpha * gain) : 0;
+      const index = ((y + py) * frame.width + x + px) * 4;
+      const restored = alpha > 0 ? restoredLumaAndClip(frame.data, index, alpha) : { luma: lumaAt(frame.data, index), clipped: 0 };
+      alphaMean += rawAlpha;
+      lumaMean += restored.luma;
+      clipped += restored.clipped;
+      count += 1;
+    }
+  }
+  if (!count) return Number.POSITIVE_INFINITY;
+  alphaMean /= count;
+  lumaMean /= count;
+  let covariance = 0;
+  let alphaVariance = 0;
+  let lumaVariance = 0;
+  for (let py = 0; py < size; py++) {
+    for (let px = 0; px < size; px++) {
+      const rawAlpha = alphaMap[py * size + px];
+      const alpha = rawAlpha > 0.015 ? Math.min(0.99, rawAlpha * gain) : 0;
+      const index = ((y + py) * frame.width + x + px) * 4;
+      const luma = alpha > 0 ? restoredLumaAndClip(frame.data, index, alpha).luma : lumaAt(frame.data, index);
+      const da = rawAlpha - alphaMean;
+      const dl = luma - lumaMean;
+      covariance += da * dl;
+      alphaVariance += da * da;
+      lumaVariance += dl * dl;
+    }
+  }
+  const correlation = alphaVariance > 0 && lumaVariance > 0 ? covariance / Math.sqrt(alphaVariance * lumaVariance) : 0;
+  const clipRatio = clipped / (count * 3);
+  return Math.abs(correlation) + clipRatio * 0.65;
+}
+
+function calibrateRemoval(frames, candidate) {
+  const calibrationFrames = representativeFrames(frames, CALIBRATION_FRAME_LIMIT);
+  const boostOptions = [...new Set([
+    candidate.edgeBoost,
+    INSET_ALPHA_EDGE_BOOST,
+    DEFAULT_ALPHA_EDGE_BOOST,
+    0.07,
+    0.09,
+    0.12
+  ].map((value) => Number(value.toFixed(3))))];
+  let best = null;
+
+  for (const edgeBoost of boostOptions) {
+    const alphaMap = getAlphaMap(candidate.size, edgeBoost);
+    const tempCandidate = { ...candidate, edgeBoost, alphaMap };
+    const baseGain = median(calibrationFrames.map((frame) => estimateGain(frame, tempCandidate)).filter(Number.isFinite)) || 1;
+    const gains = [...new Set([
+      baseGain - 0.12,
+      baseGain - 0.08,
+      baseGain - 0.04,
+      baseGain,
+      baseGain + 0.04,
+      baseGain + 0.08,
+      baseGain + 0.12,
+      0.90,
+      1.00,
+      1.10,
+      1.20
+    ].map((value) => clamp(Number(value.toFixed(3)), 0.65, 1.40)))];
+
+    for (const gain of gains) {
+      const scores = calibrationFrames.map((frame) => residualScoreForGain(frame, tempCandidate, gain, alphaMap));
+      const score = (median(scores) || Number.POSITIVE_INFINITY) + Math.max(0, edgeBoost - 0.09) * 0.02;
+      if (!best || score < best.score) best = { score, edgeBoost, alphaMap, gain };
+    }
+  }
+
+  if (!best) return candidate;
+  return { ...candidate, edgeBoost: best.edgeBoost, alphaMap: best.alphaMap, seedGain: best.gain, calibrationResidual: best.score };
+}
+
+function refineFrameGain(frame, candidate, currentGain) {
+  const estimated = estimateGain(frame, candidate);
+  const candidates = [...new Set([
+    currentGain - 0.05,
+    currentGain - 0.025,
+    currentGain,
+    currentGain + 0.025,
+    currentGain + 0.05,
+    estimated
+  ].map((value) => clamp(Number(value.toFixed(3)), 0.65, 1.40)))];
+  let bestGain = currentGain;
+  let bestScore = Number.POSITIVE_INFINITY;
+  for (const gain of candidates) {
+    const score = residualScoreForGain(frame, candidate, gain);
+    if (score < bestScore) {
+      bestScore = score;
+      bestGain = gain;
+    }
+  }
+  return clamp(bestGain, currentGain - 0.04, currentGain + 0.04);
+}
+
 async function detectWatermark(file, metadata) {
-  const frames = await sampleDetectionFrames(file, metadata);
+  const sampled = await sampleDetectionFrames(file, metadata);
+  const frames = sampled.frames;
   const known = knownCandidatesFor(metadata.width, metadata.height)
     .map((candidate) => summarizeCandidate(frames, candidate))
     .sort((a, b) => b.score - a.score);
@@ -496,7 +742,7 @@ async function detectWatermark(file, metadata) {
   const knownIsStrong = Boolean(
     knownBest &&
     knownBest.score >= STRONG_KNOWN_SCORE &&
-    knownBest.votes >= Math.max(3, Math.ceil(frames.length * 0.45)) &&
+    knownBest.votes >= Math.max(5, Math.ceil(frames.length * 0.45)) &&
     (!knownSecond || knownBest.score - knownSecond.score >= 0.025)
   );
 
@@ -508,7 +754,7 @@ async function detectWatermark(file, metadata) {
   const ranked = dedupeCandidates([...known, ...smart]).sort((a, b) => b.score - a.score);
   const best = ranked[0];
   const second = ranked[1];
-  const minVotes = Math.max(3, Math.ceil(frames.length * 0.35));
+  const minVotes = Math.max(5, Math.ceil(frames.length * 0.35));
 
   if (!best || best.score < MIN_DETECTION_SCORE || best.votes < minVotes) {
     throw new Error('No supported Gemini/Veo diamond watermark was detected with enough confidence. Nothing was changed.');
@@ -516,7 +762,10 @@ async function detectWatermark(file, metadata) {
   if (second && best.score - second.score < MIN_DETECTION_GAP && (best.x !== second.x || best.y !== second.y || best.size !== second.size)) {
     throw new Error('The watermark position is ambiguous in this clip. Video Light stopped instead of modifying the wrong region.');
   }
-  return best;
+
+  setProgress(0.24, 'Calibrating removal', `Testing alpha edge shape and removal strength on ${Math.min(frames.length, CALIBRATION_FRAME_LIMIT)} frames`);
+  await yieldToBrowser();
+  return { ...calibrateRemoval(frames, best), detectionSamples: sampled.sampleCount };
 }
 
 function removeFrameWatermark(imageData, candidate, gain) {
@@ -524,38 +773,258 @@ function removeFrameWatermark(imageData, candidate, gain) {
   for (let py = 0; py < size; py++) {
     for (let px = 0; px < size; px++) {
       const mapAlpha = alphaMap[py * size + px];
-      const alpha = mapAlpha > 0.025 ? Math.min(0.99, mapAlpha * gain) : 0;
+      const alpha = mapAlpha > 0.015 ? Math.min(0.99, mapAlpha * gain) : 0;
       if (!alpha) continue;
       const index = ((y + py) * imageData.width + x + px) * 4;
       const remainder = 1 - alpha;
       for (let channel = 0; channel < 3; channel++) {
-        imageData.data[index + channel] = Math.max(0, Math.min(255, Math.round((imageData.data[index + channel] - 255 * alpha) / remainder)));
+        imageData.data[index + channel] = clamp(Math.round((imageData.data[index + channel] - 255 * alpha) / remainder), 0, 255);
       }
     }
   }
 }
 
-function softCleanup(ctx, candidate) {
-  const { x, y, size, alphaMap } = candidate;
-  const roi = ctx.getImageData(x, y, size, size);
-  const source = new Uint8ClampedArray(roi.data);
-  for (let py = 1; py < size - 1; py++) {
-    for (let px = 1; px < size - 1; px++) {
-      const alpha = alphaMap[py * size + px];
-      if (alpha < 0.025 || alpha > 0.22) continue;
-      const index = (py * size + px) * 4;
-      for (let channel = 0; channel < 3; channel++) {
-        const neighborAverage = (
-          source[((py - 1) * size + px) * 4 + channel] +
-          source[((py + 1) * size + px) * 4 + channel] +
-          source[(py * size + px - 1) * 4 + channel] +
-          source[(py * size + px + 1) * 4 + channel]
-        ) / 4;
-        roi.data[index + channel] = Math.round(source[index + channel] * 0.78 + neighborAverage * 0.22);
+function smoothstep(edge0, edge1, value) {
+  if (edge0 === edge1) return value >= edge1 ? 1 : 0;
+  const t = clamp((value - edge0) / (edge1 - edge0), 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
+function createGaussianKernel(sigma, radius = Math.ceil(sigma * 3)) {
+  const safeSigma = Math.max(0.01, sigma);
+  const safeRadius = Math.max(1, Math.round(radius));
+  const kernel = new Float32Array(safeRadius * 2 + 1);
+  let sum = 0;
+  for (let i = -safeRadius; i <= safeRadius; i++) {
+    const value = Math.exp(-(i * i) / (2 * safeSigma * safeSigma));
+    kernel[i + safeRadius] = value;
+    sum += value;
+  }
+  for (let i = 0; i < kernel.length; i++) kernel[i] /= sum;
+  return { kernel, radius: safeRadius };
+}
+
+function gaussianBlurFloatMap(source, width, height, sigma, radius = Math.ceil(sigma * 3)) {
+  const { kernel, radius: r } = createGaussianKernel(sigma, radius);
+  const temp = new Float32Array(source.length);
+  const output = new Float32Array(source.length);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let sum = 0;
+      for (let dx = -r; dx <= r; dx++) {
+        const xx = clamp(x + dx, 0, width - 1);
+        sum += source[y * width + xx] * kernel[dx + r];
+      }
+      temp[y * width + x] = sum;
+    }
+  }
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let sum = 0;
+      for (let dy = -r; dy <= r; dy++) {
+        const yy = clamp(y + dy, 0, height - 1);
+        sum += temp[yy * width + x] * kernel[dy + r];
+      }
+      output[y * width + x] = sum;
+    }
+  }
+  return output;
+}
+
+function buildGradientWeightMap(alphaMap, width, height, strength = 1) {
+  const gradient = new Float32Array(width * height);
+  let maxGradient = 0;
+  const sample = (x, y) => alphaMap[clamp(y, 0, height - 1) * width + clamp(x, 0, width - 1)] || 0;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = y * width + x;
+      const gx = -sample(x - 1, y - 1) - 2 * sample(x - 1, y) - sample(x - 1, y + 1) + sample(x + 1, y - 1) + 2 * sample(x + 1, y) + sample(x + 1, y + 1);
+      const gy = -sample(x - 1, y - 1) - 2 * sample(x, y - 1) - sample(x + 1, y - 1) + sample(x - 1, y + 1) + 2 * sample(x, y + 1) + sample(x + 1, y + 1);
+      const value = Math.sqrt(gx * gx + gy * gy);
+      gradient[i] = value;
+      if (value > maxGradient) maxGradient = value;
+    }
+  }
+  if (maxGradient <= 0) return gradient;
+  const dilated = new Float32Array(gradient.length);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let localMax = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const xx = clamp(x + dx, 0, width - 1);
+          const yy = clamp(y + dy, 0, height - 1);
+          localMax = Math.max(localMax, gradient[yy * width + xx]);
+        }
+      }
+      dilated[y * width + x] = Math.sqrt(localMax / maxGradient);
+    }
+  }
+  const smoothed = gaussianBlurFloatMap(dilated, width, height, 1.0, 3);
+  for (let i = 0; i < smoothed.length; i++) smoothed[i] = Math.min(1, smoothed[i] * strength);
+  return smoothed;
+}
+
+function buildFootprintPolishWeightMap(alphaMap, width, height, strength = 1) {
+  const edgeWeights = buildGradientWeightMap(alphaMap, width, height, 1);
+  const weights = new Float32Array(width * height);
+  const safeStrength = clamp(strength, 0, 1);
+  for (let i = 0; i < weights.length; i++) {
+    const alpha = alphaMap[i] || 0;
+    const edge = edgeWeights[i] || 0;
+    const footprint = smoothstep(0.012, 0.12, alpha);
+    const body = smoothstep(0.08, 0.22, alpha);
+    const edgeGuard = 1 - smoothstep(0.42, 0.78, edge) * 0.24;
+    weights[i] = Math.min(1, (footprint * 0.42 + body * 0.24 + edge * 0.22) * edgeGuard * safeStrength);
+  }
+  return gaussianBlurFloatMap(weights, width, height, 0.85, 2);
+}
+
+function mapRoiWeightsToPaddedWeights(roiWeights, candidate, padded, padX, padY) {
+  const weights = new Float32Array(padded.width * padded.height);
+  for (let y = 0; y < candidate.size; y++) {
+    const py = candidate.y - padY + y;
+    if (py < 0 || py >= padded.height) continue;
+    for (let x = 0; x < candidate.size; x++) {
+      const px = candidate.x - padX + x;
+      if (px < 0 || px >= padded.width) continue;
+      weights[py * padded.width + px] = roiWeights[y * candidate.size + x];
+    }
+  }
+  return weights;
+}
+
+function gaussianBlurImageData(imageData, sigma, radius) {
+  const { width, height, data } = imageData;
+  const { kernel, radius: r } = createGaussianKernel(sigma, radius);
+  const temp = new Float32Array(data.length);
+  const output = new Uint8ClampedArray(data.length);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const dst = (y * width + x) * 4;
+      for (let c = 0; c < 4; c++) {
+        let sum = 0;
+        for (let dx = -r; dx <= r; dx++) {
+          const xx = clamp(x + dx, 0, width - 1);
+          sum += data[(y * width + xx) * 4 + c] * kernel[dx + r];
+        }
+        temp[dst + c] = sum;
       }
     }
   }
-  ctx.putImageData(roi, x, y);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const dst = (y * width + x) * 4;
+      for (let c = 0; c < 4; c++) {
+        let sum = 0;
+        for (let dy = -r; dy <= r; dy++) {
+          const yy = clamp(y + dy, 0, height - 1);
+          sum += temp[(yy * width + x) * 4 + c] * kernel[dy + r];
+        }
+        output[dst + c] = clamp(Math.round(sum), 0, 255);
+      }
+    }
+  }
+  return output;
+}
+
+function inpaintImageData(imageData, weights, iterations) {
+  const { width, height, data } = imageData;
+  const active = new Uint8Array(width * height);
+  const current = new Float32Array(data.length);
+  const next = new Float32Array(data.length);
+  current.set(data);
+  next.set(data);
+  for (let i = 0; i < weights.length; i++) active[i] = weights[i] > 0.07 ? 1 : 0;
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const pixel = y * width + x;
+      if (!active[pixel]) continue;
+      let count = 0;
+      const sum = [0, 0, 0];
+      for (let radius = 1; radius <= 7 && count === 0; radius++) {
+        for (let dy = -radius; dy <= radius; dy++) {
+          const yy = y + dy;
+          if (yy < 0 || yy >= height) continue;
+          for (let dx = -radius; dx <= radius; dx++) {
+            const xx = x + dx;
+            if (xx < 0 || xx >= width || Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue;
+            const neighbor = yy * width + xx;
+            if (active[neighbor]) continue;
+            const idx = neighbor * 4;
+            sum[0] += data[idx];
+            sum[1] += data[idx + 1];
+            sum[2] += data[idx + 2];
+            count += 1;
+          }
+        }
+      }
+      if (count > 0) {
+        const idx = pixel * 4;
+        for (let c = 0; c < 3; c++) current[idx + c] = next[idx + c] = sum[c] / count;
+      }
+    }
+  }
+
+  for (let round = 0; round < iterations; round++) {
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const pixel = y * width + x;
+        const idx = pixel * 4;
+        if (!active[pixel]) continue;
+        const neighbors = [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1], [x - 1, y - 1], [x + 1, y - 1], [x - 1, y + 1], [x + 1, y + 1]];
+        let count = 0;
+        const sum = [0, 0, 0];
+        for (const [nx, ny] of neighbors) {
+          if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+          const nIdx = (ny * width + nx) * 4;
+          sum[0] += current[nIdx];
+          sum[1] += current[nIdx + 1];
+          sum[2] += current[nIdx + 2];
+          count += 1;
+        }
+        if (count > 0) {
+          for (let c = 0; c < 3; c++) next[idx + c] = sum[c] / count;
+          next[idx + 3] = current[idx + 3];
+        }
+      }
+    }
+    current.set(next);
+  }
+
+  const output = new Uint8ClampedArray(data.length);
+  for (let i = 0; i < output.length; i++) output[i] = clamp(Math.round(current[i]), 0, 255);
+  return output;
+}
+
+function applyFootprintPolish(ctx, candidate) {
+  const padding = Math.max(22, Math.round(candidate.size * 0.55));
+  const padX = Math.max(0, candidate.x - padding);
+  const padY = Math.max(0, candidate.y - padding);
+  const padRight = Math.min(ctx.canvas.width, candidate.x + candidate.size + padding);
+  const padBottom = Math.min(ctx.canvas.height, candidate.y + candidate.size + padding);
+  const padded = ctx.getImageData(padX, padY, padRight - padX, padBottom - padY);
+  const roiWeights = buildFootprintPolishWeightMap(candidate.alphaMap, candidate.size, candidate.size, 1);
+  const paddedWeights = mapRoiWeightsToPaddedWeights(roiWeights, candidate, padded, padX, padY);
+  const weights = gaussianBlurFloatMap(paddedWeights, padded.width, padded.height, 0.8, 2);
+  const base = gaussianBlurImageData(padded, 1.8, 4);
+  const inpainted = inpaintImageData(padded, weights, Math.max(12, Math.round(candidate.size / 4)));
+  const repairedSource = gaussianBlurImageData({ width: padded.width, height: padded.height, data: inpainted }, 1.2, 3);
+
+  for (let pixel = 0; pixel < weights.length; pixel++) {
+    const weight = clamp(weights[pixel] || 0, 0, 1);
+    const blendWeight = Math.min(0.42, weight * 0.82);
+    if (blendWeight <= 0.012) continue;
+    const idx = pixel * 4;
+    const textureGain = Math.max(0.24, 0.70 - blendWeight * 1.05);
+    for (let c = 0; c < 3; c++) {
+      const texture = padded.data[idx + c] - base[idx + c];
+      const repaired = clamp(repairedSource[idx + c] + texture * textureGain, 0, 255);
+      padded.data[idx + c] = Math.round(padded.data[idx + c] * (1 - blendWeight) + repaired * blendWeight);
+    }
+  }
+  ctx.putImageData(padded, padX, padY);
 }
 
 async function processVideo(file, metadata, detection) {
@@ -604,11 +1073,10 @@ async function processVideo(file, metadata, detection) {
           const frame = ctx.getImageData(0, 0, metadata.width, metadata.height);
           const confidence = scoreCandidate(frame, detection);
           if (confidence >= LOW_FRAME_CONFIDENCE) {
-            const estimatedGain = estimateGain(frame, detection);
-            gain = Math.max(gain - 0.05, Math.min(gain + 0.05, estimatedGain));
+            gain = refineFrameGain(frame, detection, gain);
             removeFrameWatermark(frame, detection, gain);
             ctx.putImageData(frame, 0, 0);
-            if (cleanup === 'soft') softCleanup(ctx, detection);
+            if (cleanup === 'enhanced') applyFootprintPolish(ctx, detection);
           } else {
             skipped += 1;
           }
@@ -625,7 +1093,7 @@ async function processVideo(file, metadata, detection) {
 
     const audioDiscarded = Boolean(audioTrack && conversion.discardedTracks.some((item) => item.track === audioTrack));
     conversion.onProgress = (progress) => {
-      const safe = Number.isFinite(progress) ? Math.max(0, Math.min(1, progress)) : 0;
+      const safe = Number.isFinite(progress) ? clamp(progress, 0, 1) : 0;
       setProgress(0.28 + safe * 0.70, 'Processing video', `Frame ${processed}${metadata.frameCountEstimate ? ` / ~${metadata.frameCountEstimate}` : ''} · ${skipped} low-confidence skipped`);
     };
 
@@ -646,12 +1114,20 @@ async function processVideo(file, metadata, detection) {
   }
 }
 
+function showError(title, message) {
+  els.errorTitle.textContent = title;
+  els.errorMessage.textContent = message;
+  els.options.hidden = true;
+  els.actions.hidden = true;
+  els.process.disabled = false;
+  showDropState('error');
+}
+
 async function loadFile(file) {
   if (!file) return;
-  resetForFile();
+  clearUrls();
   currentFile = null;
   currentMetadata = null;
-  els.fileCard.hidden = true;
   els.options.hidden = true;
   els.actions.hidden = true;
 
@@ -669,46 +1145,62 @@ async function loadFile(file) {
     if (!Number.isFinite(metadata.width) || !Number.isFinite(metadata.height)) throw new Error('Could not read video dimensions.');
     currentFile = file;
     currentMetadata = metadata;
+    currentInputUrl = URL.createObjectURL(file);
+    els.selectedPreview.src = currentInputUrl;
+    els.selectedPreview.load();
+    const samples = detectionSampleCount(metadata.duration);
     els.fileName.textContent = file.name;
-    els.fileMeta.textContent = `${metadata.width} × ${metadata.height} · ${secondsLabel(metadata.duration)} · ${bytesLabel(file.size)}${metadata.hasAudio ? ` · audio ${metadata.audioCodec || 'present'}` : ''}`;
-    els.fileCard.hidden = false;
+    els.fileMeta.textContent = `${metadata.width} × ${metadata.height} · ${secondsLabel(metadata.duration)} · ${bytesLabel(file.size)} · ${samples} detection samples${metadata.hasAudio ? ` · audio ${metadata.audioCodec || 'present'}` : ''}`;
     els.options.hidden = false;
     els.actions.hidden = false;
+    showDropState('selected');
   } catch (error) {
     showError('Could not read this MP4', error.message || 'The file could not be decoded.');
   }
 }
 
-function showError(title, message) {
-  els.error.hidden = false;
-  els.errorTitle.textContent = title;
-  els.errorMessage.textContent = message;
-  els.process.disabled = false;
+function setResultMode(mode) {
+  if (!currentInputUrl || !currentOutputUrl) return;
+  const nextUrl = mode === 'original' ? currentInputUrl : currentOutputUrl;
+  if (currentResultMode === mode && els.resultPreview.src === nextUrl) return;
+  const currentTime = Number.isFinite(els.resultPreview.currentTime) ? els.resultPreview.currentTime : 0;
+  const shouldResume = !els.resultPreview.paused;
+  currentResultMode = mode;
+  els.showOriginal.classList.toggle('is-active', mode === 'original');
+  els.showCleaned.classList.toggle('is-active', mode === 'cleaned');
+  els.resultPreview.src = nextUrl;
+  els.resultPreview.load();
+  els.resultPreview.addEventListener('loadedmetadata', () => {
+    if (Number.isFinite(els.resultPreview.duration)) els.resultPreview.currentTime = Math.min(currentTime, Math.max(0, els.resultPreview.duration - 0.05));
+    if (shouldResume) els.resultPreview.play().catch(() => {});
+  }, { once: true });
 }
 
 async function run() {
   if (!currentFile || !currentMetadata) return;
-  resetForFile();
+  clearOutput();
   els.process.disabled = true;
+  els.options.hidden = true;
+  els.actions.hidden = true;
+  showDropState('processing');
   try {
     setProgress(0.01, 'Preparing', 'Opening the local MP4.');
     const detection = await detectWatermark(currentFile, currentMetadata);
-    setProgress(0.26, 'Watermark locked', `${detection.source} · ${detection.size}px at ${detection.x},${detection.y} · confidence ${detection.score.toFixed(3)}`);
+    setProgress(0.27, 'Watermark locked', `${detection.source} · ${detection.size}px at ${detection.x},${detection.y} · ${detection.detectionSamples} samples · edge +${detection.edgeBoost.toFixed(3)}`);
     const result = await processVideo(currentFile, currentMetadata, detection);
     setProgress(1, 'Done', `${result.processed} frames processed.`);
 
     currentBlob = result.blob;
-    currentBeforeUrl = URL.createObjectURL(currentFile);
-    currentAfterUrl = URL.createObjectURL(result.blob);
-    els.before.src = currentBeforeUrl;
-    els.after.src = currentAfterUrl;
-    els.before.load();
-    els.after.load();
+    currentOutputUrl = URL.createObjectURL(result.blob);
+    currentResultMode = 'cleaned';
+    els.showOriginal.classList.remove('is-active');
+    els.showCleaned.classList.add('is-active');
+    els.resultPreview.src = currentOutputUrl;
+    els.resultPreview.load();
     const audioLabel = result.hadAudio ? (result.audioKept ? 'audio kept' : 'audio could not be kept') : 'no audio track';
-    els.resultDetails.textContent = `${currentMetadata.width} × ${currentMetadata.height} · ${result.processed} frames · ${result.skipped} skipped · ${Math.round(result.bitrate / 1_000_000)} Mbps · ${bytesLabel(result.blob.size)} · ${audioLabel} · detected ${detection.size}px at ${detection.x},${detection.y}`;
-    els.result.hidden = false;
+    els.resultDetails.textContent = `${currentMetadata.width} × ${currentMetadata.height} · ${result.processed} frames · ${result.skipped} skipped · ${Math.round(result.bitrate / 1_000_000)} Mbps · ${bytesLabel(result.blob.size)} · ${audioLabel} · ${detection.detectionSamples} detection samples · edge +${detection.edgeBoost.toFixed(3)} · gain ${result.gain.toFixed(2)}`;
+    showDropState('result');
   } catch (error) {
-    els.progress.hidden = true;
     showError('Could not process this video', error.message || 'Video processing failed.');
   } finally {
     els.process.disabled = false;
@@ -718,12 +1210,16 @@ async function run() {
 els.choose.addEventListener('click', pickFile);
 els.replace.addEventListener('click', pickFile);
 els.newFile.addEventListener('click', pickFile);
+els.errorRetry.addEventListener('click', pickFile);
+els.remove.addEventListener('click', removeSelection);
 els.input.addEventListener('change', () => loadFile(els.input.files[0]));
 els.process.addEventListener('click', run);
+els.showOriginal.addEventListener('click', () => setResultMode('original'));
+els.showCleaned.addEventListener('click', () => setResultMode('cleaned'));
 els.download.addEventListener('click', () => {
-  if (!currentBlob || !currentAfterUrl || !currentFile) return;
+  if (!currentBlob || !currentOutputUrl || !currentFile) return;
   const link = document.createElement('a');
-  link.href = currentAfterUrl;
+  link.href = currentOutputUrl;
   link.download = `${currentFile.name.replace(/\.[^.]+$/, '') || 'video'}-clean.mp4`;
   link.click();
 });
