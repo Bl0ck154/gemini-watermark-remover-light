@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const html = fs.readFileSync(new URL('../docs/video.html', import.meta.url), 'utf8');
 const js = fs.readFileSync(new URL('../docs/video.js', import.meta.url), 'utf8');
+const bootstrap = fs.readFileSync(new URL('../docs/video-bootstrap.js', import.meta.url), 'utf8');
 const css = fs.readFileSync(new URL('../docs/video.css', import.meta.url), 'utf8');
 
 test('Video Light mirrors the image tool upload layout', () => {
@@ -22,7 +23,8 @@ test('Selected video uses the drop field as a real preview workspace', () => {
   assert.match(html, /id="video-remove"/);
   assert.match(html, /id="video-replace"[^>]*>Choose another/);
   assert.match(css, /\.video-stage\{/);
-  assert.match(css, /\.video-preview-close\{/);
+  assert.match(css, /\.video-preview-close::before/);
+  assert.match(css, /translate\(-50%,-50%\) rotate\(45deg\)/);
 });
 
 test('Processed result is a single large preview with Original and Cleaned switching', () => {
@@ -33,15 +35,15 @@ test('Processed result is a single large preview with Original and Cleaned switc
   assert.match(css, /\.video-preview-switch\{/);
 });
 
-test('Video settings are stacked and explain cleanup and bitrate', () => {
+test('Video settings stay simple and explain cleanup and bitrate', () => {
   assert.match(html, /class="format-picker video-choice-group video-cleanup-group"/);
   assert.match(html, /class="format-picker video-choice-group video-bitrate-group"/);
   assert.match(css, /\.video-options\{display:flex;flex-direction:column/);
-  assert.match(html, /Enhanced cleanup/);
-  assert.match(html, /compression halo/);
+  assert.match(html, /High-quality cleanup/);
+  assert.match(html, /remaining halo locally/);
   assert.match(html, /12 Mbps/);
   assert.match(html, /Bitrate only controls output quality and file size/);
-  assert.match(html, /does not affect watermark detection, position, or removal strength/);
+  assert.match(html, /does not affect watermark removal/);
 });
 
 test('Video Light adapts detection samples to clip length instead of fixed 12 frames', () => {
@@ -53,7 +55,7 @@ test('Video Light adapts detection samples to clip length instead of fixed 12 fr
   assert.doesNotMatch(js, /SAMPLE_COUNT = 12/);
 });
 
-test('Video Light calibrates edge-boosted alpha and performs footprint cleanup', () => {
+test('Video Light calibrates edge-boosted alpha and performs deterministic footprint cleanup', () => {
   assert.match(js, /DEFAULT_ALPHA_EDGE_BOOST = 0\.045/);
   assert.match(js, /function enhanceVideoAlphaEdges/);
   assert.match(js, /function calibrateRemoval/);
@@ -61,6 +63,28 @@ test('Video Light calibrates edge-boosted alpha and performs footprint cleanup',
   assert.match(js, /function buildFootprintPolishWeightMap/);
   assert.match(js, /function applyFootprintPolish/);
   assert.match(js, /cleanup === 'enhanced'/);
+});
+
+test('High-quality cleanup adds local FDnCNN with WebGPU and WASM fallback', () => {
+  assert.match(html, /video-bootstrap\.js/);
+  assert.match(bootstrap, /onnxruntime-web@\$\{ORT_VERSION\}/);
+  assert.match(bootstrap, /model_core_fp32_104\.onnx/);
+  assert.match(bootstrap, /model_core_fp32_200\.onnx/);
+  assert.match(bootstrap, /executionProviders: \['webgpu'\]/);
+  assert.match(bootstrap, /executionProviders: \['wasm'\]/);
+  assert.match(bootstrap, /FDNCNN_SIGMA = 75/);
+  assert.match(bootstrap, /async function enhanceCanvas/);
+  assert.match(bootstrap, /process: async \(sample\)/);
+  assert.match(bootstrap, /continuing with deterministic cleanup/);
+});
+
+test('Public video metadata is simplified for end users', () => {
+  assert.match(bootstrap, /friendlySelectedMeta/);
+  assert.match(bootstrap, /friendlyResultMeta/);
+  assert.match(bootstrap, /Analyzing the watermark/);
+  assert.match(bootstrap, /Cleaning the video locally/);
+  assert.doesNotMatch(html, /detection samples/i);
+  assert.doesNotMatch(html, /alpha gain/i);
 });
 
 test('Video Light uses local Mediabunny Conversion for timing-safe MP4 rebuilds', () => {
