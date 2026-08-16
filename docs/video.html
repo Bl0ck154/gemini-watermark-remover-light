@@ -10,7 +10,7 @@
   <title>Video Light · Gemini Watermark Remover Light</title>
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./video.css">
-  <script type="module" src="./video.js"></script>
+  <script type="module" src="./video-bootstrap.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#video-dropzone">Skip to video upload</a>
@@ -59,7 +59,7 @@
           <span class="scan-mark" aria-hidden="true"></span>
           <strong id="video-progress-label">Preparing…</strong>
           <div class="video-progress-track"><span id="video-progress-bar"></span></div>
-          <p><span id="video-progress-percent">0%</span> · <span id="video-progress-detail">Reading video metadata.</span></p>
+          <p><span id="video-progress-percent">0%</span> · <span id="video-progress-detail">Preparing your video…</span></p>
         </div>
 
         <div class="video-result-state" id="video-result" hidden>
@@ -88,17 +88,17 @@
 
       <div class="video-options" id="video-options" hidden>
         <fieldset class="format-picker video-choice-group video-cleanup-group">
-          <legend>Residual cleanup</legend>
+          <legend>Cleanup</legend>
           <label class="format-option">
             <input type="radio" name="video-cleanup" value="enhanced" checked>
             <span class="radio-mark" aria-hidden="true"></span>
-            <span><strong>Enhanced cleanup</strong><small>Edge-aware footprint repair reduces the compression halo left around the removed mark.</small></span>
+            <span><strong>High-quality cleanup</strong><small>Best removal. Cleans the remaining halo locally on your device.</small></span>
             <em>Recommended</em>
           </label>
           <label class="format-option">
             <input type="radio" name="video-cleanup" value="off">
             <span class="radio-mark" aria-hidden="true"></span>
-            <span><strong>Off</strong><small>Reverse-alpha removal only, with no residual repair.</small></span>
+            <span><strong>Basic</strong><small>Faster removal without the extra halo-cleaning pass.</small></span>
           </label>
         </fieldset>
 
@@ -120,7 +120,7 @@
             <span class="radio-mark" aria-hidden="true"></span>
             <span><strong>18 Mbps</strong><small>Larger file with less additional compression.</small></span>
           </label>
-          <p class="video-option-note"><strong>Bitrate only controls output quality and file size.</strong> It does not affect watermark detection, position, or removal strength.</p>
+          <p class="video-option-note"><strong>Bitrate only controls output quality and file size.</strong> It does not affect watermark removal.</p>
         </fieldset>
       </div>
 
@@ -128,26 +128,26 @@
         <button class="primary-button" id="video-process" type="button">Process video <span aria-hidden="true">→</span></button>
       </div>
 
-      <p class="privacy-note">Your video stays on this device. Current Chrome or Edge with WebCodecs H.264 support is recommended.</p>
+      <p class="privacy-note">Your video stays on this device. Current Chrome or Edge is recommended.</p>
     </section>
 
     <section class="method video-method" id="how-video-works" aria-labelledby="video-method-title">
       <div class="method-visual">
         <p class="section-kicker">How it works</p>
-        <h2 id="video-method-title">Detect. Remove. Rebuild.</h2>
-        <p class="video-method-copy">Detection sampling scales with clip length. Every decoded frame is still processed during export; the samples are only used to lock and calibrate the watermark.</p>
+        <h2 id="video-method-title">Analyze. Remove. Clean.</h2>
+        <p class="video-method-copy">Video Light analyzes the clip, removes the visible mark from every frame, cleans the remaining compression halo, and rebuilds the video locally.</p>
       </div>
       <ol class="method-steps">
-        <li><span>1</span><div><strong>Detect</strong><p>Video Light samples roughly three frames per second, within safe limits, and searches the bottom-right area for the mark.</p></div></li>
-        <li><span>2</span><div><strong>Remove</strong><p>The video alpha profile is edge-boosted and calibrated on the sampled frames before reverse-alpha removal is applied to every frame.</p></div></li>
-        <li><span>3</span><div><strong>Repair & rebuild</strong><p>Enhanced cleanup targets the watermark footprint and compression halo, then Mediabunny/WebCodecs rebuild the MP4 locally.</p></div></li>
+        <li><span>1</span><div><strong>Analyze</strong><p>The watermark is located and checked across the clip before processing starts.</p></div></li>
+        <li><span>2</span><div><strong>Remove</strong><p>The visible mark is removed from every frame rather than only from a few sampled frames.</p></div></li>
+        <li><span>3</span><div><strong>Clean & rebuild</strong><p>High-quality cleanup targets the remaining halo, then the finished MP4 is rebuilt locally in your browser.</p></div></li>
       </ol>
     </section>
 
     <section class="userscript-cta video-limit-note" aria-labelledby="video-limit-title">
       <div><p class="section-kicker">Current scope</p><h2 id="video-limit-title">Local first.<br>Fail closed.</h2></div>
       <div class="install-guide">
-        <p>Video Light targets visible Gemini/Veo diamond-style marks. If detection is weak or ambiguous, it stops instead of modifying a random part of the video. The cleanup remains fully local and does not upload the clip.</p>
+        <p>Video Light targets visible Gemini/Veo diamond-style marks. If the mark cannot be located safely, processing stops instead of modifying a random part of the video. Your clip is never uploaded.</p>
       </div>
     </section>
   </main>
