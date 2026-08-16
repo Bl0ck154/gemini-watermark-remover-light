@@ -31,20 +31,58 @@
     <section class="workbench video-workbench" aria-label="Video watermark remover">
       <div class="drop-zone video-dropzone" id="video-dropzone">
         <input id="video-file-input" type="file" accept="video/mp4" hidden>
+
         <button id="video-choose" class="drop-idle" type="button">
           <span class="drop-symbol" aria-hidden="true"><span></span></span>
           <span class="drop-copy"><strong>Drop a video here</strong><small>or click anywhere in this field to choose one</small></span>
           <span class="file-types">MP4</span>
         </button>
-      </div>
 
-      <div class="result-toolbar video-file-card" id="video-file-card" hidden>
-        <div class="result-meta">
-          <span class="success-dot" aria-hidden="true"></span>
-          <p><strong id="video-file-name"></strong><small id="video-file-meta"></small></p>
+        <div class="video-selected-state" id="video-selected-state" hidden>
+          <div class="video-stage">
+            <video id="video-selected-preview" controls playsinline preload="metadata"></video>
+            <span class="image-label video-stage-label">Selected video</span>
+            <button class="video-preview-close" id="video-remove" type="button" aria-label="Remove selected video">×</button>
+          </div>
+          <div class="result-toolbar video-selected-toolbar">
+            <div class="result-meta">
+              <span class="video-file-dot" aria-hidden="true"></span>
+              <p><strong id="video-file-name"></strong><small id="video-file-meta"></small></p>
+            </div>
+            <div class="result-actions">
+              <button id="video-replace" class="secondary-button" type="button">Choose another</button>
+            </div>
+          </div>
         </div>
-        <div class="result-actions">
-          <button id="video-replace" class="secondary-button" type="button">Choose another</button>
+
+        <div class="processing-state video-processing-state" id="video-progress" hidden role="status" aria-live="polite">
+          <span class="scan-mark" aria-hidden="true"></span>
+          <strong id="video-progress-label">Preparing…</strong>
+          <div class="video-progress-track"><span id="video-progress-bar"></span></div>
+          <p><span id="video-progress-percent">0%</span> · <span id="video-progress-detail">Reading video metadata.</span></p>
+        </div>
+
+        <div class="video-result-state" id="video-result" hidden>
+          <div class="video-stage video-result-stage">
+            <video id="video-result-preview" controls playsinline preload="metadata"></video>
+            <div class="video-preview-switch" role="group" aria-label="Choose result preview">
+              <button id="video-show-original" type="button">Original</button>
+              <button id="video-show-cleaned" class="is-active" type="button">Cleaned</button>
+            </div>
+          </div>
+          <div class="result-toolbar video-result-toolbar">
+            <div class="result-meta"><span class="success-dot" aria-hidden="true"></span><p><strong>Video processed</strong><small id="video-result-details"></small></p></div>
+            <div class="result-actions">
+              <button class="secondary-button" id="video-new" type="button">Choose another</button>
+              <button class="primary-button" id="video-download" type="button">Download MP4 <span aria-hidden="true">↓</span></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="error-state video-error" id="video-error" hidden role="alert">
+          <span aria-hidden="true">!</span>
+          <div><strong id="video-error-title">Could not process this video</strong><p id="video-error-message"></p></div>
+          <button class="secondary-button" id="video-error-retry" type="button">Choose another</button>
         </div>
       </div>
 
@@ -52,15 +90,15 @@
         <fieldset class="format-picker video-choice-group video-cleanup-group">
           <legend>Residual cleanup</legend>
           <label class="format-option">
-            <input type="radio" name="video-cleanup" value="soft" checked>
+            <input type="radio" name="video-cleanup" value="enhanced" checked>
             <span class="radio-mark" aria-hidden="true"></span>
-            <span><strong>Soft cleanup</strong><small>Lightly reduces compression residue around the removed mark.</small></span>
+            <span><strong>Enhanced cleanup</strong><small>Edge-aware footprint repair reduces the compression halo left around the removed mark.</small></span>
             <em>Recommended</em>
           </label>
           <label class="format-option">
             <input type="radio" name="video-cleanup" value="off">
             <span class="radio-mark" aria-hidden="true"></span>
-            <span><strong>Off</strong><small>Pure reverse-alpha removal with no extra smoothing.</small></span>
+            <span><strong>Off</strong><small>Reverse-alpha removal only, with no residual repair.</small></span>
           </label>
         </fieldset>
 
@@ -90,31 +128,6 @@
         <button class="primary-button" id="video-process" type="button">Process video <span aria-hidden="true">→</span></button>
       </div>
 
-      <div class="video-progress" id="video-progress" hidden role="status" aria-live="polite">
-        <div class="video-progress-head"><strong id="video-progress-label">Preparing…</strong><span id="video-progress-percent">0%</span></div>
-        <div class="video-progress-track"><span id="video-progress-bar"></span></div>
-        <small id="video-progress-detail">Reading video metadata.</small>
-      </div>
-
-      <div class="video-error" id="video-error" hidden role="alert">
-        <strong id="video-error-title">Could not process this video</strong>
-        <p id="video-error-message"></p>
-      </div>
-
-      <div class="video-result" id="video-result" hidden>
-        <div class="video-result-grid">
-          <figure><figcaption>Original</figcaption><video id="video-before" controls playsinline preload="metadata"></video></figure>
-          <figure><figcaption>Cleaned</figcaption><video id="video-after" controls playsinline preload="metadata"></video></figure>
-        </div>
-        <div class="result-toolbar video-result-toolbar">
-          <div class="result-meta"><span class="success-dot" aria-hidden="true"></span><p><strong>Video processed</strong><small id="video-result-details"></small></p></div>
-          <div class="result-actions">
-            <button class="secondary-button" id="video-new" type="button">Choose another</button>
-            <button class="primary-button" id="video-download" type="button">Download MP4 <span aria-hidden="true">↓</span></button>
-          </div>
-        </div>
-      </div>
-
       <p class="privacy-note">Your video stays on this device. Current Chrome or Edge with WebCodecs H.264 support is recommended.</p>
     </section>
 
@@ -122,19 +135,19 @@
       <div class="method-visual">
         <p class="section-kicker">How it works</p>
         <h2 id="video-method-title">Detect. Remove. Rebuild.</h2>
-        <p class="video-method-copy">Video Light samples multiple frames, searches the bottom-right area for a supported Gemini/Veo mark, then processes the clip frame by frame. The MP4 is rebuilt locally in the browser.</p>
+        <p class="video-method-copy">Detection sampling scales with clip length. Every decoded frame is still processed during export; the samples are only used to lock and calibrate the watermark.</p>
       </div>
       <ol class="method-steps">
-        <li><span>1</span><div><strong>Detect</strong><p>Known layouts are checked first. If they are weak, a bottom-right smart search looks for relocated and smaller diamond marks.</p></div></li>
-        <li><span>2</span><div><strong>Remove</strong><p>Reverse alpha blending is applied only when frame evidence is strong enough. Soft cleanup is optional.</p></div></li>
-        <li><span>3</span><div><strong>Rebuild</strong><p>Mediabunny and WebCodecs preserve the source frame timing while the video is re-encoded as H.264 MP4.</p></div></li>
+        <li><span>1</span><div><strong>Detect</strong><p>Video Light samples roughly three frames per second, within safe limits, and searches the bottom-right area for the mark.</p></div></li>
+        <li><span>2</span><div><strong>Remove</strong><p>The video alpha profile is edge-boosted and calibrated on the sampled frames before reverse-alpha removal is applied to every frame.</p></div></li>
+        <li><span>3</span><div><strong>Repair & rebuild</strong><p>Enhanced cleanup targets the watermark footprint and compression halo, then Mediabunny/WebCodecs rebuild the MP4 locally.</p></div></li>
       </ol>
     </section>
 
     <section class="userscript-cta video-limit-note" aria-labelledby="video-limit-title">
-      <div><p class="section-kicker">Current scope</p><h2 id="video-limit-title">Light first.<br>Fail closed.</h2></div>
+      <div><p class="section-kicker">Current scope</p><h2 id="video-limit-title">Local first.<br>Fail closed.</h2></div>
       <div class="install-guide">
-        <p>Video Light currently targets visible Gemini/Veo diamond-style marks. If detection is weak or ambiguous, it stops instead of modifying a random part of the video. Heavy compression can still leave a faint residual; a stronger local ML cleanup mode can be added later.</p>
+        <p>Video Light targets visible Gemini/Veo diamond-style marks. If detection is weak or ambiguous, it stops instead of modifying a random part of the video. The cleanup remains fully local and does not upload the clip.</p>
       </div>
     </section>
   </main>
