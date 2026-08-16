@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#edf2f0">
-  <meta name="description" content="Remove visible Gemini/Veo diamond watermarks from supported videos locally in your browser.">
+  <meta name="description" content="Remove visible Gemini/Veo video watermarks locally in your browser.">
   <link rel="canonical" href="https://bl0ck154.github.io/gemini-watermark-remover-light/video.html">
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
   <title>Video Light · Gemini Watermark Remover Light</title>
@@ -13,6 +13,8 @@
   <script type="module" src="./video.js"></script>
 </head>
 <body>
+  <a class="skip-link" href="#video-dropzone">Skip to video upload</a>
+
   <header class="site-header">
     <a class="wordmark" href="./" aria-label="Gemini Watermark Remover Light home">
       <span class="wordmark-mark" aria-hidden="true">✦</span>
@@ -25,28 +27,22 @@
     </nav>
   </header>
 
-  <main class="video-main">
-    <section class="video-hero">
-      <p class="section-kicker">Video Light · experimental</p>
-      <h1>Clean supported Gemini/Veo videos locally.</h1>
-      <p>Nothing is uploaded. Video Light decodes the MP4 in your browser, removes the visible diamond frame by frame, and rebuilds an MP4 with the original audio track when possible.</p>
-      <div class="video-badges" aria-label="Video Light capabilities">
-        <span>Local-only</span><span>WebCodecs</span><span>No server</span><span>No ffmpeg.wasm</span>
-      </div>
-    </section>
-
-    <section class="video-workbench" aria-labelledby="video-tool-title">
-      <div class="video-tool-heading">
-        <div><p class="section-kicker">Browser tool</p><h2 id="video-tool-title">Video watermark remover</h2></div>
-        <p class="video-support">Current v1 target: Gemini/Veo diamond watermark on common 1080p and 720p outputs.</p>
+  <main id="top" class="video-main">
+    <section class="workbench video-workbench" aria-label="Video watermark remover">
+      <div class="video-workbench-head">
+        <div>
+          <p class="section-kicker">Video Light · experimental</p>
+          <h1>Remove a video watermark</h1>
+        </div>
+        <p>MP4 · local browser processing · no upload</p>
       </div>
 
-      <div class="video-dropzone" id="video-dropzone">
+      <div class="drop-zone video-dropzone" id="video-dropzone">
         <input id="video-file-input" type="file" accept="video/mp4" hidden>
-        <button id="video-choose" class="video-choose" type="button">
+        <button id="video-choose" class="drop-idle video-choose" type="button">
           <span class="drop-symbol" aria-hidden="true"><span></span></span>
-          <span><strong>Drop an MP4 here</strong><small>or click to choose a video</small></span>
-          <em>MP4</em>
+          <span class="drop-copy"><strong>Drop an MP4 here</strong><small>or click anywhere in this field to choose one</small></span>
+          <span class="file-types">MP4</span>
         </button>
       </div>
 
@@ -56,21 +52,41 @@
       </div>
 
       <div class="video-options" id="video-options" hidden>
-        <label>
-          <span><strong>Residual cleanup</strong><small>Softens compression residue around the diamond after reverse-alpha removal.</small></span>
-          <select id="video-cleanup">
-            <option value="soft" selected>Soft · recommended</option>
-            <option value="off">Off · pure reverse alpha</option>
-          </select>
-        </label>
-        <label>
-          <span><strong>Video bitrate</strong><small>Higher values preserve more detail but create a larger output.</small></span>
-          <select id="video-bitrate">
-            <option value="8000000">8 Mbps</option>
-            <option value="12000000" selected>12 Mbps</option>
-            <option value="18000000">18 Mbps</option>
-          </select>
-        </label>
+        <fieldset class="format-picker video-choice-group">
+          <legend>Residual cleanup</legend>
+          <label class="format-option">
+            <input type="radio" name="video-cleanup" value="soft" checked>
+            <span class="radio-mark" aria-hidden="true"></span>
+            <span><strong>Soft cleanup</strong><small>Lightly reduces compression residue around the removed mark.</small></span>
+            <em>Recommended</em>
+          </label>
+          <label class="format-option">
+            <input type="radio" name="video-cleanup" value="off">
+            <span class="radio-mark" aria-hidden="true"></span>
+            <span><strong>Off</strong><small>Pure reverse-alpha removal with no extra smoothing.</small></span>
+          </label>
+        </fieldset>
+
+        <fieldset class="format-picker video-choice-group">
+          <legend>Output quality · video bitrate</legend>
+          <label class="format-option">
+            <input type="radio" name="video-bitrate" value="8000000">
+            <span class="radio-mark" aria-hidden="true"></span>
+            <span><strong>8 Mbps</strong><small>Smaller file. More re-encoding compression, especially on detailed 1080p video.</small></span>
+          </label>
+          <label class="format-option">
+            <input type="radio" name="video-bitrate" value="12000000" checked>
+            <span class="radio-mark" aria-hidden="true"></span>
+            <span><strong>12 Mbps</strong><small>Balanced output size and quality for typical 720p/1080p clips.</small></span>
+            <em>Recommended</em>
+          </label>
+          <label class="format-option">
+            <input type="radio" name="video-bitrate" value="18000000">
+            <span class="radio-mark" aria-hidden="true"></span>
+            <span><strong>18 Mbps</strong><small>Larger file with less additional compression. It does not improve watermark detection.</small></span>
+          </label>
+          <p class="video-option-note"><strong>Bitrate only controls the newly encoded video quality and file size.</strong> It does not move the watermark region or make removal stronger.</p>
+        </fieldset>
       </div>
 
       <div class="video-actions" id="video-actions" hidden>
@@ -90,8 +106,8 @@
 
       <div class="video-result" id="video-result" hidden>
         <div class="video-result-grid">
-          <figure><figcaption>Original</figcaption><video id="video-before" controls playsinline></video></figure>
-          <figure><figcaption>Cleaned</figcaption><video id="video-after" controls playsinline></video></figure>
+          <figure><figcaption>Original</figcaption><video id="video-before" controls playsinline preload="metadata"></video></figure>
+          <figure><figcaption>Cleaned</figcaption><video id="video-after" controls playsinline preload="metadata"></video></figure>
         </div>
         <div class="video-result-meta"><span class="success-dot" aria-hidden="true"></span><p><strong>Video processed</strong><small id="video-result-details"></small></p></div>
         <div class="video-result-actions">
@@ -100,16 +116,26 @@
         </div>
       </div>
 
-      <p class="privacy-note">Your video stays on this device. Video processing requires a browser with WebCodecs H.264 support; current Chrome/Edge are the safest choice.</p>
+      <p class="privacy-note">Your video stays on this device. Current Chrome or Edge with WebCodecs H.264 support is recommended.</p>
     </section>
 
-    <section class="video-notes">
-      <div><p class="section-kicker">What v1 does</p><h2>Lightweight first. Quality-aware.</h2></div>
-      <div class="video-note-grid">
-        <article><strong>Multi-frame detection</strong><p>Samples frames across the clip instead of trusting frame zero, so fades and busy scenes are less likely to fool detection.</p></article>
-        <article><strong>Stable geometry</strong><p>Locks one watermark position for the clip and applies confidence checks per frame to reduce flicker and accidental damage.</p></article>
-        <article><strong>Soft residual cleanup</strong><p>A small local edge cleanup reduces H.264 ringing without shipping a neural model in the first release.</p></article>
-        <article><strong>Known limit</strong><p>Some heavily compressed or unusual clips can still leave a faint residual. Enhanced WebGPU/WASM cleanup is planned separately.</p></article>
+    <section class="method video-method" id="how-video-works" aria-labelledby="video-method-title">
+      <div class="method-visual">
+        <p class="section-kicker">How it works</p>
+        <h2 id="video-method-title">Detect. Remove. Rebuild.</h2>
+        <p class="video-method-copy">Video Light samples multiple frames, searches the bottom-right area for a supported Gemini/Veo mark, then processes the clip frame by frame. The MP4 is rebuilt locally in the browser.</p>
+      </div>
+      <ol class="method-steps">
+        <li><span>1</span><div><strong>Detect</strong><p>Known layouts are checked first. If they are weak, a bottom-right smart search looks for relocated and smaller diamond marks.</p></div></li>
+        <li><span>2</span><div><strong>Remove</strong><p>Reverse alpha blending is applied only when frame evidence is strong enough. Soft cleanup is optional.</p></div></li>
+        <li><span>3</span><div><strong>Rebuild</strong><p>Mediabunny and WebCodecs preserve the source frame timing while the video is re-encoded as H.264 MP4.</p></div></li>
+      </ol>
+    </section>
+
+    <section class="userscript-cta video-limit-note" aria-labelledby="video-limit-title">
+      <div><p class="section-kicker">Current scope</p><h2 id="video-limit-title">Light first.<br>Fail closed.</h2></div>
+      <div class="install-guide">
+        <p>Video Light currently targets visible Gemini/Veo diamond-style marks. If detection is weak or ambiguous, it stops instead of modifying a random part of the video. Heavy compression can still leave a faint residual; a stronger local ML cleanup mode can be added later.</p>
       </div>
     </section>
   </main>
