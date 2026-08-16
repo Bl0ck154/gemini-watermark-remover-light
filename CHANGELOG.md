@@ -3,15 +3,18 @@
 ## Unreleased
 
 - Added experimental **Video Light** as a separate GitHub Pages tool for local MP4 processing.
-- Added 12-frame Gemini/Veo diamond detection for common 1080p and 720p layouts, with conservative low-confidence fail/skip behavior.
+- Replaced the fixed 12-frame detector with adaptive sampling at roughly 3 detection frames per second, bounded to 18–60 samples; a 10-second clip now uses 30 samples while export still processes every decoded frame.
+- Expanded smart search to score multiple representative frames instead of effectively trusting only three frames during fallback scanning.
 - Added bottom-right smart search for relocated and smaller diamond variants instead of trusting only a few hard-coded positions.
 - Raised the detection gate and added ambiguity rejection so weak matches stop instead of modifying the wrong region.
-- Added frame-by-frame reverse-alpha removal, bounded alpha adjustment, and optional soft residual cleanup for compression ringing.
+- Added upstream-style video alpha edge boosting, automatic edge/gain calibration on sampled frames, and bounded per-frame gain refinement.
+- Replaced the old four-neighbor soft blur with **Enhanced cleanup**: an edge-aware watermark-footprint mask, local inpaint/repair, and texture-preserving blend aimed specifically at compression halo around the removed mark.
 - Replaced the first manual video mux/export path with Mediabunny `Conversion`, so source frame timing is preserved by the media pipeline and the primary audio track is kept when supported.
-- Reworked the Video Light page to match the image tool: the upload field is now at the top instead of below a large hero section.
+- Reworked the Video Light page to use the upload field as the complete workspace: selected-video preview, remove/choose-another controls, processing state, and the final large preview all live in the same field.
+- Replaced the two small result players with one large preview and an `Original / Cleaned` switch.
 - Replaced terse video settings with explained cleanup and 8/12/18 Mbps bitrate choices; 12 Mbps is the recommended default and bitrate is explicitly documented as output compression only.
 - Added Video Light regression coverage, syntax checks, site navigation, and sitemap discovery.
-- Video Light intentionally avoids a backend, ffmpeg.wasm, and bundled ML models; enhanced WebGPU/WASM denoise remains a future optional mode.
+- Video Light intentionally avoids a backend and ffmpeg.wasm. The current enhanced cleanup remains Canvas-based; optional local WebGPU/WASM FDnCNN cleanup can be added separately.
 
 - Replaced the redundant `Original format` web option with an explicit WebP output, so JPEG, PNG, and WebP are now three distinct download choices.
 - Added regression coverage preventing the duplicate output option from returning.
