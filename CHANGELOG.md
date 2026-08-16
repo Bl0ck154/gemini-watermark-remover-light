@@ -8,6 +8,11 @@
 - Added bottom-right smart search for relocated and smaller diamond variants instead of trusting only a few hard-coded positions.
 - Raised the detection gate and added ambiguity rejection so weak matches stop instead of modifying the wrong region.
 - Added upstream-style video alpha edge boosting, automatic edge/gain calibration on sampled frames, and bounded per-frame gain refinement.
+- Added an Allenk-inspired refinement layer on top of the stable browser export path: a multi-frame **±4 px** local position snap tightens the detected anchor before final reverse-alpha reconstruction.
+- Added per-shot alpha consensus from up to 12 useful frames plus the documented **five-round** local-background feedback estimator; strong-frame gain is capped to **±0.05** around the shot value to reduce flicker and over-removal.
+- Replaced the old binary frame gate in the refinement layer with three-tier handling: strong frames get feedback refinement, weak-but-plausible frames use the shot consensus, and only likely watermark-free frames are left untouched. Background-normalized alpha contrast provides extra evidence on difficult bright/busy frames.
+- Added conservative alpha-shape selection between the embedded calibrated `48`, `96`, and current `96-20260520` profiles. Alternatives are kept only when their multi-frame restoration residual improves over the baseline by a meaningful margin.
+- The public Allenk demo repository does not expose its native implementation or remastered mask assets, so Video Light ports the documented position/gain behavior while continuing to use the calibrated maps available in the browser upstream.
 - Replaced the old four-neighbor soft blur with deterministic footprint cleanup: an edge-aware watermark mask, local inpaint/repair, and texture-preserving blend aimed specifically at compression halo around the removed mark.
 - Added default **High-quality cleanup** with an on-demand local FDnCNN pass over the watermark region. WebGPU is preferred when available and WASM is used as fallback; if the runtime fails, deterministic cleanup continues automatically.
 - Kept the timing-safe Mediabunny `Conversion` export path and wrapped its async frame processor instead of reintroducing the earlier manual mux path.
@@ -16,7 +21,7 @@
 - Rebuilt the selected-video close icon from centered CSS strokes so it no longer depends on the off-center font glyph.
 - Removed developer-facing metadata from the public video UI: sample counts, audio codec state, frame counters, detection coordinates, edge values, and gain values are no longer shown to end users.
 - Simplified cleanup copy to `High-quality cleanup / Basic` and kept 12 Mbps as the recommended bitrate; bitrate is explicitly documented as output compression only.
-- Added regression coverage and syntax checking for the Video Light bootstrap/FDnCNN layer.
+- Added regression coverage and syntax checking for the Video Light bootstrap/FDnCNN and Allenk-style refinement layers.
 - Video Light still avoids a backend and ffmpeg.wasm. User media remains local; the pinned denoise model is downloaded only when the high-quality mode needs it.
 
 - Replaced the redundant `Original format` web option with an explicit WebP output, so JPEG, PNG, and WebP are now three distinct download choices.
