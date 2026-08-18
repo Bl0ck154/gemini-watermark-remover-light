@@ -26,6 +26,14 @@ test('public image tool requires confidence instead of trusting arbitrary upload
   assert.match(app, /No supported Gemini mark was found with enough confidence/);
 });
 
+test('image tool tracks the current 2K 48px large-margin watermark and avoids dark-hole over-removal', () => {
+  assert.match(app, /CURRENT_2K_SMALL_SIZE_KEYS = new Set\(\['2048x2048', '2400x1792'\]\)/);
+  assert.match(app, /size: 48,\s*marginRight: 96,\s*marginBottom: 96,\s*mapKey: '48'/);
+  assert.match(app, /function calibrateAlphaGain/);
+  assert.match(app, /Math\.max\(0, -residual\) \* 0\.65/);
+  assert.match(app, /LARGE_96_GAIN_CANDIDATES/);
+});
+
 test('upload UI protects format switching, stale work, and decoded image memory', () => {
   assert.match(app, /currentInputFile = file/);
   assert.match(app, /generation !== processingGeneration/);

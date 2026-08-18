@@ -5,6 +5,7 @@ const ALPHA_THRESHOLD = 2e-3;
 const MAX_ALPHA = 0.99;
 const MIN_MULTI_CANDIDATE_SCORE = 0.002;
 const MIN_MULTI_SCORE_GAP = 0.0005;
+const TWO_K_SMALL_PREFERENCE_GAP = 0.0025;
 const MIN_SCAN_EDGE = 1536;
 const SCAN_MARGIN_MIN = 32;
 const SCAN_MARGIN_MAX = 384;
@@ -20,6 +21,10 @@ const ONE_K_SIZE_KEYS = new Set([
   '1200x896', '928x1152', '1152x928', '3072x384', '768x1376', '1376x768', '1408x768',
   '1584x672', '832x1248', '1248x832', '864x1184', '1184x864', '768x1344', '1344x768', '1536x672'
 ]);
+const CURRENT_2K_SMALL_SIZE_KEYS = new Set(['2048x2048', '2400x1792']);
+const DEFAULT_GAIN_CANDIDATES = Object.freeze([0.55, 0.6, 0.7, 0.85, 1, 1.15, 1.3]);
+const SMALL_48_GAIN_CANDIDATES = Object.freeze([0.45, 0.55, 0.6, 0.7, 0.85, 1, 1.15]);
+const LARGE_96_GAIN_CANDIDATES = Object.freeze([0.55, 0.6, 0.7, 0.85, 1, 1.15, 1.3]);
 const mapPromises = new Map();
 
 const elements = {
@@ -91,8 +96,32 @@ function getV2SmallConfig(width, height) {
   if (longSide > 2048 || shortSide <= 0) return null;
   const sourceLongDim = shortSide >= 566 ? 2752 : (shortSide >= 550 ? 2816 : 2848);
   const margin = Math.round(192 * (longSide / sourceLongDim));
-  const config = { size: 36, marginRight: margin, marginBottom: margin, mapKey: '36-v2' };
+  const config = { size: 36, marginRight: margin, marginBottom: margin, mapKey: '36-v2', gainCandidates: [1] };
   return width - margin - config.size >= 0 && height - margin - config.size >= 0 ? config : null;
+}
+
+function isNearCurrent2KSmallSize(width, height) {
+  const key = `${width}x${height}`;
+  if (CURRENT_2K_SMALL_SIZE_KEYS.has(key)) return true;
+
+  // Some downloaded/edited square Gemini images lose a handful of edge pixels.
+  // Keep this tolerance deliberately narrow so the new 48/96/96 prior does not
+  // spill into unrelated 2K formats (the upstream fix is exact-size gated too).
+  return Math.abs(width - 2048) <= 32 && Math.abs(height - 2048) <= 32;
+}
+
+function current2KSmallCandidate(width, height) {
+  if (!isNearCurrent2KSmallSize(width, height)) return null;
+  const exact = CURRENT_2K_SMALL_SIZE_KEYS.has(`${width}x${height}`);
+  return {
+    size: 48,
+    marginRight: 96,
+    marginBottom: 96,
+    mapKey: '48',
+    gainCandidates: SMALL_48_GAIN_CANDIDATES,
+    prior: exact ? 0.00055 : 0.0002,
+    family: exact ? '202608-2k-small-exact' : '202608-2k-small-near'
+  };
 }
 
 function appendUniqueCandidate(candidates, candidate) {
@@ -105,28 +134,53 @@ function appendUniqueCandidate(candidates, candidate) {
 function getCandidateConfigs(width, height) {
   const key = `${width}x${height}`;
   const v2Small = getV2SmallConfig(width, height);
-  if (HALF_K_SIZE_KEYS.has(key)) return appendUniqueCandidate([{ size: 48, marginRight: 32, marginBottom: 32, mapKey: '48', prior: 0.00025 }], v2Small);
-  if (ONE_K_SIZE_KEYS.has(key)) {
+  const modern2KSmall = current2KSmallCandidate(width, height);
+
+  if (HALF_K_SIZE_KEYS.has(key)) {
     return appendUniqueCandidate([
-      { size: 48, marginRight: 32, marginBottom: 32, mapKey: '48', prior: 0.00035 },
-      { size: 48, marginRight: 96, marginBottom: 96, mapKey: '48', alphaGain: 0.55, prior: 0.00015 },
-      { size: 96, marginRight: 64, marginBottom: 64, mapKey: '96' },
-      { size: 24, marginRight: 48, marginBottom: 48, mapKey: '24-preview', alphaGain: 0.55 }
+      { size: 48, marginRight: 32, marginBottom: 32, mapKey: '48', prior: 0.00025, gainCandidates: SMALL_48_GAIN_CANDIDATES }
     ], v2Small);
   }
+
+  if (ONE_K_SIZE_KEYS.has(key)) {
+    return appendUniqueCandidate([
+      { size: 48, marginRight: 32, marginBottom: 32, mapKey: '48', prior: 0.00035, gainCandidates: SMALL_48_GAIN_CANDIDATES },
+      { size: 48, marginRight: 96, marginBottom: 96, mapKey: '48', prior: 0.00015, gainCandidates: SMALL_48_GAIN_CANDIDATES },
+      { size: 96, marginRight: 64, marginBottom: 64, mapKey: '96', gainCandidates: LARGE_96_GAIN_CANDIDATES },
+      { size: 24, marginRight: 48, marginBottom: 48, mapKey: '24-preview', gainCandidates: [0.45, 0.55, 0.6, 0.7] }
+    ], v2Small);
+  }
+
   if (Math.max(width, height) >= 1024) {
-    const candidates = [
-      { size: 96, marginRight: 64, marginBottom: 64, mapKey: '96' },
-      { size: 48, marginRight: 96, marginBottom: 96, mapKey: '48', alphaGain: 0.55 }
-    ];
-    if (Math.max(width, height) <= 1800) candidates.push(
-      { size: 48, marginRight: 32, marginBottom: 32, mapKey: '48' },
-      { size: 24, marginRight: 48, marginBottom: 48, mapKey: '24-preview', alphaGain: 0.55 }
+    const candidates = [];
+    appendUniqueCandidate(candidates, modern2KSmall);
+    candidates.push(
+      { size: 96, marginRight: 64, marginBottom: 64, mapKey: '96', gainCandidates: LARGE_96_GAIN_CANDIDATES },
+      { size: 48, marginRight: 96, marginBottom: 96, mapKey: '48', gainCandidates: SMALL_48_GAIN_CANDIDATES }
     );
-    if (width >= 288 && height >= 288) candidates.push({ size: 96, marginRight: 192, marginBottom: 192, mapKey: '96-20260520' });
+    if (Math.max(width, height) <= 1800) candidates.push(
+      { size: 48, marginRight: 32, marginBottom: 32, mapKey: '48', gainCandidates: SMALL_48_GAIN_CANDIDATES },
+      { size: 24, marginRight: 48, marginBottom: 48, mapKey: '24-preview', gainCandidates: [0.45, 0.55, 0.6, 0.7] }
+    );
+    if (width >= 288 && height >= 288) {
+      candidates.push({
+        size: 96,
+        marginRight: 192,
+        marginBottom: 192,
+        mapKey: '96-20260520',
+        gainCandidates: LARGE_96_GAIN_CANDIDATES
+      });
+    }
     return appendUniqueCandidate(candidates, v2Small);
   }
-  return appendUniqueCandidate([{ size: 48, marginRight: 32, marginBottom: 32, mapKey: '48' }], v2Small);
+
+  return appendUniqueCandidate([
+    { size: 48, marginRight: 32, marginBottom: 32, mapKey: '48', gainCandidates: SMALL_48_GAIN_CANDIDATES }
+  ], v2Small);
+}
+
+function pixelLuma(data, index) {
+  return (0.2126 * data[index] + 0.7152 * data[index + 1] + 0.0722 * data[index + 2]) / 255;
 }
 
 function scoreConfig(imageData, alphaMap, config) {
@@ -142,7 +196,7 @@ function scoreConfig(imageData, alphaMap, config) {
     for (let col = 0; col < config.size; col += 1) {
       const alpha = Math.max(0, alphaMap[row * config.size + col] - ALPHA_NOISE_FLOOR);
       const index = ((y + row) * width + x + col) * 4;
-      const lum = (0.2126 * data[index] + 0.7152 * data[index + 1] + 0.0722 * data[index + 2]) / 255;
+      const lum = pixelLuma(data, index);
       lumSum += lum;
       count += 1;
       if (alpha >= ALPHA_THRESHOLD) {
@@ -155,17 +209,90 @@ function scoreConfig(imageData, alphaMap, config) {
   return weightedLum / alphaSum - lumSum / count;
 }
 
+function scoreRemovalGain(imageData, alphaMap, config, gain) {
+  const { width, height, data } = imageData;
+  const x = width - config.marginRight - config.size;
+  const y = height - config.marginBottom - config.size;
+  if (x < 0 || y < 0) return Number.POSITIVE_INFINITY;
+
+  let alphaSum = 0;
+  let weightedLum = 0;
+  let lumSum = 0;
+  let count = 0;
+  let clippedChannels = 0;
+  let restoredChannels = 0;
+
+  for (let row = 0; row < config.size; row += 1) {
+    for (let col = 0; col < config.size; col += 1) {
+      const mapAlpha = alphaMap[row * config.size + col];
+      const effective = Math.max(0, mapAlpha - ALPHA_NOISE_FLOOR) * gain;
+      const imageIndex = ((y + row) * width + x + col) * 4;
+      let lum = pixelLuma(data, imageIndex);
+
+      if (effective >= ALPHA_THRESHOLD) {
+        const alpha = Math.min(mapAlpha * gain, MAX_ALPHA);
+        const remainder = 1 - alpha;
+        const restored = [0, 1, 2].map((channel) => {
+          const raw = (data[imageIndex + channel] - alpha * 255) / remainder;
+          if (raw < 0 || raw > 255) clippedChannels += 1;
+          restoredChannels += 1;
+          return Math.max(0, Math.min(255, raw));
+        });
+        lum = (0.2126 * restored[0] + 0.7152 * restored[1] + 0.0722 * restored[2]) / 255;
+      }
+
+      const weight = Math.max(0, mapAlpha - ALPHA_NOISE_FLOOR);
+      lumSum += lum;
+      count += 1;
+      if (weight >= ALPHA_THRESHOLD) {
+        alphaSum += weight;
+        weightedLum += weight * lum;
+      }
+    }
+  }
+
+  if (!alphaSum || !count) return Number.POSITIVE_INFINITY;
+  const residual = weightedLum / alphaSum - lumSum / count;
+  const clipRatio = restoredChannels ? clippedChannels / restoredChannels : 0;
+
+  // Negative residual is the characteristic "dark star / dark hole" produced
+  // by over-subtraction, so penalize it more strongly than a faint positive
+  // residual. This keeps calibration on the conservative side when two gains
+  // are otherwise similar.
+  return Math.abs(residual) + Math.max(0, -residual) * 0.65 + clipRatio * 0.75;
+}
+
+function calibrateAlphaGain(imageData, alphaMap, config) {
+  const candidates = Array.isArray(config.gainCandidates) && config.gainCandidates.length
+    ? config.gainCandidates
+    : DEFAULT_GAIN_CANDIDATES;
+
+  let bestGain = Number.isFinite(config.alphaGain) ? config.alphaGain : 1;
+  let bestScore = Number.POSITIVE_INFINITY;
+
+  for (const gain of candidates) {
+    if (!Number.isFinite(gain) || gain <= 0) continue;
+    const score = scoreRemovalGain(imageData, alphaMap, config, gain);
+    if (score < bestScore) {
+      bestScore = score;
+      bestGain = gain;
+    }
+  }
+
+  return { ...config, alphaGain: bestGain, gainScore: bestScore };
+}
+
 async function scanBottomRightConfig(imageData) {
   if (Math.min(imageData.width, imageData.height) < MIN_SCAN_EDGE) return null;
   let best = null;
   let bestScore = Number.NEGATIVE_INFINITY;
   let secondBestScore = Number.NEGATIVE_INFINITY;
   const profiles = [
-    { mapKey: '24-preview', size: 24, alphaGain: 0.55 },
-    { mapKey: '36-v2', size: 36 },
-    { mapKey: '48', size: 48, alphaGain: 0.55 },
-    { mapKey: '96', size: 96 },
-    { mapKey: '96-20260520', size: 96 }
+    { mapKey: '24-preview', size: 24, gainCandidates: [0.45, 0.55, 0.6, 0.7] },
+    { mapKey: '36-v2', size: 36, gainCandidates: [1] },
+    { mapKey: '48', size: 48, gainCandidates: SMALL_48_GAIN_CANDIDATES },
+    { mapKey: '96', size: 96, gainCandidates: LARGE_96_GAIN_CANDIDATES },
+    { mapKey: '96-20260520', size: 96, gainCandidates: LARGE_96_GAIN_CANDIDATES }
   ];
   for (const profile of profiles) {
     const alphaMap = await getAlphaMap(profile.mapKey);
@@ -184,16 +311,20 @@ async function scanBottomRightConfig(imageData) {
     }
   }
   if (bestScore < MIN_SCAN_CANDIDATE_SCORE || bestScore - secondBestScore < MIN_SCAN_SCORE_GAP) return null;
-  return best;
+  return calibrateAlphaGain(imageData, await getAlphaMap(best.mapKey), best);
 }
 
 async function selectConfig(imageData) {
   const candidates = getCandidateConfigs(imageData.width, imageData.height);
+  const scored = [];
   let best = candidates[0];
   let bestScore = Number.NEGATIVE_INFINITY;
   let secondBestScore = Number.NEGATIVE_INFINITY;
+
   for (const candidate of candidates) {
-    const score = scoreConfig(imageData, await getAlphaMap(candidate.mapKey), candidate) + (candidate.prior || 0);
+    const rawScore = scoreConfig(imageData, await getAlphaMap(candidate.mapKey), candidate);
+    const score = rawScore + (candidate.prior || 0);
+    scored.push({ candidate, rawScore, score });
     if (score > bestScore) {
       secondBestScore = bestScore;
       best = candidate;
@@ -202,9 +333,28 @@ async function selectConfig(imageData) {
       secondBestScore = score;
     }
   }
+
+  if (isNearCurrent2KSmallSize(imageData.width, imageData.height)) {
+    const small = scored.find(({ candidate }) => (
+      candidate.size === 48 &&
+      candidate.marginRight === 96 &&
+      candidate.marginBottom === 96 &&
+      candidate.mapKey === '48'
+    ));
+    if (
+      small &&
+      small.rawScore >= MIN_MULTI_CANDIDATE_SCORE &&
+      (best.size !== 96 || small.score >= bestScore - TWO_K_SMALL_PREFERENCE_GAP)
+    ) {
+      return calibrateAlphaGain(imageData, await getAlphaMap(small.candidate.mapKey), small.candidate);
+    }
+  }
+
   if (bestScore < MIN_MULTI_CANDIDATE_SCORE) return scanBottomRightConfig(imageData);
-  if (Number.isFinite(secondBestScore) && bestScore - secondBestScore < MIN_MULTI_SCORE_GAP) return scanBottomRightConfig(imageData);
-  return best;
+  if (Number.isFinite(secondBestScore) && bestScore - secondBestScore < MIN_MULTI_SCORE_GAP) {
+    return scanBottomRightConfig(imageData);
+  }
+  return calibrateAlphaGain(imageData, await getAlphaMap(best.mapKey), best);
 }
 
 function removeWatermark(imageData, alphaMap, config) {
@@ -306,7 +456,8 @@ async function processFile(file) {
     elements.beforeImage.src = beforeUrl;
     elements.afterImage.src = afterUrl;
     elements.resultTitle.textContent = 'Watermark removed';
-    elements.resultDetails.textContent = `${width} × ${height} · ${config.size}px profile · ${formatBytes(output.size)}`;
+    const gainLabel = Number.isFinite(config.alphaGain) ? ` · gain ${config.alphaGain.toFixed(2)}` : '';
+    elements.resultDetails.textContent = `${width} × ${height} · ${config.size}px @ ${config.marginRight}/${config.marginBottom}${gainLabel} · ${formatBytes(output.size)}`;
     elements.comparisonRange.value = '50';
     updateComparison();
     showState('result');
