@@ -36,15 +36,17 @@ test('Processed result is a single large preview with Original and Cleaned switc
   assert.match(css, /\.video-preview-switch\{/);
 });
 
-test('Video settings stay simple and explain cleanup and bitrate', () => {
+test('Video settings keep cleanup simple and match output bitrate to the source automatically', () => {
   assert.match(html, /class="format-picker video-choice-group video-cleanup-group"/);
-  assert.match(html, /class="format-picker video-choice-group video-bitrate-group"/);
+  assert.doesNotMatch(html, /class="format-picker video-choice-group video-bitrate-group"/);
   assert.match(css, /\.video-options\{display:flex;flex-direction:column/);
   assert.match(html, /High-quality cleanup/);
   assert.match(html, /remaining halo locally/);
-  assert.match(html, /12 Mbps/);
-  assert.match(html, /Bitrate only controls output quality and file size/);
-  assert.match(html, /does not affect watermark removal/);
+  assert.doesNotMatch(html, />12 Mbps</);
+  assert.match(refinement, /async function sourceVideoBitrate/);
+  assert.match(refinement, /getAverageBitrate/);
+  assert.match(refinement, /computePacketStats/);
+  assert.match(refinement, /Source-matched video bitrate/);
 });
 
 test('Video Light adapts detection samples to clip length instead of fixed 12 frames', () => {
@@ -66,27 +68,24 @@ test('Video Light calibrates edge-boosted alpha and performs deterministic footp
   assert.match(js, /cleanup === 'enhanced'/);
 });
 
-test('Allenk-style refinement adds position snap, shot consensus, and five-round feedback', () => {
+test('Video refinement shim avoids the removed double reverse-alpha pass', () => {
   assert.match(html, /video-allenk-refinement\.js/);
-  assert.match(refinement, /POSITION_REFINE_RADIUS = 4/);
-  assert.match(refinement, /SHOT_SEED_FRAME_LIMIT = 12/);
-  assert.match(refinement, /ALPHA_REFINEMENT_ROUNDS = 5/);
-  assert.match(refinement, /FRAME_HIGH_CONFIDENCE = 0\.14/);
-  assert.match(refinement, /FRAME_LOW_CONFIDENCE = 0\.035/);
-  assert.match(refinement, /FRAME_GAIN_STEP_CAP = 0\.05/);
-  assert.match(refinement, /function refinePosition/);
-  assert.match(refinement, /function estimateFrameGain/);
-  assert.match(refinement, /low-confidence-shot-consensus/);
-  assert.match(refinement, /background-normalized-evidence/);
+  assert.match(refinement, /await import\('\.\/video-bootstrap\.js'\)/);
+  assert.match(refinement, /sourceMatchedBitrateConversionInit/);
+  assert.match(refinement, /Do not overwrite the cleaned/);
+  assert.doesNotMatch(refinement, /POSITION_REFINE_RADIUS/);
+  assert.doesNotMatch(refinement, /restoreRawPatch/);
+  assert.doesNotMatch(refinement, /applyReverseAlpha/);
 });
 
-test('Refinement can select between calibrated current and legacy video alpha profiles', () => {
-  assert.match(refinement, /96-20260520/);
-  assert.match(refinement, /profile: '96'/);
-  assert.match(refinement, /profile: '48'/);
-  assert.match(refinement, /ALPHA_SHAPE_SAMPLE_LIMIT = 8/);
-  assert.match(refinement, /relativeImprovement >= 0\.08/);
-  assert.match(refinement, /applyReverseAlpha/);
+test('Calibrated current and legacy alpha profiles stay in the single main removal pipeline', () => {
+  assert.match(js, /96-20260520/);
+  assert.match(js, /SMALL_VIDEO_ALPHA_PROFILE = '48'/);
+  assert.match(js, /LARGE_VIDEO_ALPHA_PROFILE = '96-20260520'/);
+  assert.match(js, /function calibrateRemoval/);
+  assert.match(js, /function refineFrameGain/);
+  assert.match(js, /removeFrameWatermark/);
+  assert.doesNotMatch(refinement, /applyReverseAlpha/);
 });
 
 test('High-quality cleanup adds local FDnCNN with WebGPU and WASM fallback', () => {
