@@ -12,8 +12,10 @@ function validBitrate(value) {
 }
 
 async function sourceVideoBitrate(input) {
-  const track = await input?.getPrimaryVideoTrack?.().catch?.(() => null)
-    ?? await input?.getPrimaryVideoTrack?.();
+  let track = null;
+  try {
+    track = await input?.getPrimaryVideoTrack?.();
+  } catch {}
   if (!track) return null;
 
   // Prefer the container's average-video-bitrate metadata when it is present.
@@ -23,10 +25,10 @@ async function sourceVideoBitrate(input) {
     if (validBitrate(average)) return Math.round(average);
   } catch {}
 
-  // Many MP4s omit btrt metadata. Mediabunny can derive the real average from
-  // encoded packet sizes/timestamps without decoding frames. For the short AI
-  // clips this tool targets, scanning the packet table is cheap and much more
-  // representative than forcing 12 Mbps.
+  // Many MP4s omit bitrate metadata. Mediabunny can derive the real average
+  // from encoded packet sizes/timestamps without decoding frames. For the short
+  // AI clips this tool targets, scanning the packet table is cheap and avoids
+  // inflating a small source to the old fixed 12 Mbps target.
   try {
     const stats = await track.computePacketStats?.(Infinity, { skipLiveWait: true });
     if (validBitrate(stats?.averageBitrate)) return Math.round(stats.averageBitrate);
